@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS messages (
     id integer PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
+    time timestamp NOT NULL,
     sender_id integer NOT NULL,
     receiver_id integer NOT NULL,
     msg text NOT NULL,

@@ -22,10 +22,10 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MessengerServiceClient interface {
-	SignUp(ctx context.Context, in *SignUpData, opts ...grpc.CallOption) (*UserID, error)
-	SignIn(ctx context.Context, in *SignInData, opts ...grpc.CallOption) (*UserID, error)
+	SignUp(ctx context.Context, in *SignUpData, opts ...grpc.CallOption) (*User, error)
+	SignIn(ctx context.Context, in *SignInData, opts ...grpc.CallOption) (*User, error)
 	SendMessage(ctx context.Context, opts ...grpc.CallOption) (MessengerService_SendMessageClient, error)
-	ReceiveMessage(ctx context.Context, in *UserID, opts ...grpc.CallOption) (MessengerService_ReceiveMessageClient, error)
+	ReceiveMessage(ctx context.Context, in *User, opts ...grpc.CallOption) (MessengerService_ReceiveMessageClient, error)
 }
 
 type messengerServiceClient struct {
@@ -36,8 +36,8 @@ func NewMessengerServiceClient(cc grpc.ClientConnInterface) MessengerServiceClie
 	return &messengerServiceClient{cc}
 }
 
-func (c *messengerServiceClient) SignUp(ctx context.Context, in *SignUpData, opts ...grpc.CallOption) (*UserID, error) {
-	out := new(UserID)
+func (c *messengerServiceClient) SignUp(ctx context.Context, in *SignUpData, opts ...grpc.CallOption) (*User, error) {
+	out := new(User)
 	err := c.cc.Invoke(ctx, "/messengerpb.MessengerService/SignUp", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -45,8 +45,8 @@ func (c *messengerServiceClient) SignUp(ctx context.Context, in *SignUpData, opt
 	return out, nil
 }
 
-func (c *messengerServiceClient) SignIn(ctx context.Context, in *SignInData, opts ...grpc.CallOption) (*UserID, error) {
-	out := new(UserID)
+func (c *messengerServiceClient) SignIn(ctx context.Context, in *SignInData, opts ...grpc.CallOption) (*User, error) {
+	out := new(User)
 	err := c.cc.Invoke(ctx, "/messengerpb.MessengerService/SignIn", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func (x *messengerServiceSendMessageClient) CloseAndRecv() (*MessageAck, error) 
 	return m, nil
 }
 
-func (c *messengerServiceClient) ReceiveMessage(ctx context.Context, in *UserID, opts ...grpc.CallOption) (MessengerService_ReceiveMessageClient, error) {
+func (c *messengerServiceClient) ReceiveMessage(ctx context.Context, in *User, opts ...grpc.CallOption) (MessengerService_ReceiveMessageClient, error) {
 	stream, err := c.cc.NewStream(ctx, &MessengerService_ServiceDesc.Streams[1], "/messengerpb.MessengerService/ReceiveMessage", opts...)
 	if err != nil {
 		return nil, err
@@ -124,10 +124,10 @@ func (x *messengerServiceReceiveMessageClient) Recv() (*Message, error) {
 // All implementations must embed UnimplementedMessengerServiceServer
 // for forward compatibility
 type MessengerServiceServer interface {
-	SignUp(context.Context, *SignUpData) (*UserID, error)
-	SignIn(context.Context, *SignInData) (*UserID, error)
+	SignUp(context.Context, *SignUpData) (*User, error)
+	SignIn(context.Context, *SignInData) (*User, error)
 	SendMessage(MessengerService_SendMessageServer) error
-	ReceiveMessage(*UserID, MessengerService_ReceiveMessageServer) error
+	ReceiveMessage(*User, MessengerService_ReceiveMessageServer) error
 	mustEmbedUnimplementedMessengerServiceServer()
 }
 
@@ -135,16 +135,16 @@ type MessengerServiceServer interface {
 type UnimplementedMessengerServiceServer struct {
 }
 
-func (UnimplementedMessengerServiceServer) SignUp(context.Context, *SignUpData) (*UserID, error) {
+func (UnimplementedMessengerServiceServer) SignUp(context.Context, *SignUpData) (*User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SignUp not implemented")
 }
-func (UnimplementedMessengerServiceServer) SignIn(context.Context, *SignInData) (*UserID, error) {
+func (UnimplementedMessengerServiceServer) SignIn(context.Context, *SignInData) (*User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SignIn not implemented")
 }
 func (UnimplementedMessengerServiceServer) SendMessage(MessengerService_SendMessageServer) error {
 	return status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
 }
-func (UnimplementedMessengerServiceServer) ReceiveMessage(*UserID, MessengerService_ReceiveMessageServer) error {
+func (UnimplementedMessengerServiceServer) ReceiveMessage(*User, MessengerService_ReceiveMessageServer) error {
 	return status.Errorf(codes.Unimplemented, "method ReceiveMessage not implemented")
 }
 func (UnimplementedMessengerServiceServer) mustEmbedUnimplementedMessengerServiceServer() {}
@@ -223,7 +223,7 @@ func (x *messengerServiceSendMessageServer) Recv() (*Message, error) {
 }
 
 func _MessengerService_ReceiveMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(UserID)
+	m := new(User)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}

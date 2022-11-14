@@ -14,42 +14,40 @@ import (
 )
 
 var (
-	senderName   = flag.Int64("sender", 1, "Sender name for messaging")
 	receiverName = flag.Int64("receiver", 2, "Receiver name for messaging")
 	tcpServer    = flag.String("server", ":5400", "Tcp server")
 )
 
-func signIn(ctx context.Context, client messengerpb.MessengerServiceClient, signInData *messengerpb.SignInData) *messengerpb.UserID {
-	userId, err := client.SignIn(ctx, signInData)
+func signIn(ctx context.Context, client messengerpb.MessengerServiceClient, signInData *messengerpb.SignInData) *messengerpb.User {
+	user, err := client.SignIn(ctx, signInData)
 	if err != nil {
 		fmt.Printf("err: %v", err)
 	}
-	return userId
+	return user
 }
 
-func receiveMessage(ctx context.Context, client messengerpb.MessengerServiceClient) {
-	userID := &messengerpb.UserID{Id: *senderName}
-	stream, err := client.ReceiveMessage(ctx, userID)
+func receiveMessage(ctx context.Context, client messengerpb.MessengerServiceClient, user *messengerpb.User) {
+	stream, err := client.ReceiveMessage(ctx, user)
 	if err != nil {
-		log.Fatalf("client.ReceiveMessage(ctx, &userID) throes: %v \n", err)
+		log.Fatalf("client.ReceiveMessage(ctx, &user) throes: %v \n", err)
 	}
 	for {
 		in, err := stream.Recv()
 		if err != nil {
 			log.Fatalf("Failed to receive message from user. \nErr: %v \n", err)
 		}
-		fmt.Printf("%v: %v \n", in.Sender, in.Message)
+		fmt.Printf("%v: %v \n", in.Sender.FirstName, in.Message)
 	}
 }
 
-func sendMessage(ctx context.Context, client messengerpb.MessengerServiceClient, message string) {
+func sendMessage(ctx context.Context, client messengerpb.MessengerServiceClient, message string, user *messengerpb.User) {
 	stream, err := client.SendMessage(ctx)
 	if err != nil {
 		log.Printf("Cannot send message: %v \n", err)
 	}
 	msg := &messengerpb.Message{
-		Sender:   &messengerpb.UserID{Id: *senderName},
-		Receiver: &messengerpb.UserID{Id: *receiverName},
+		Sender:   user,
+		Receiver: &messengerpb.User{Id: *receiverName},
 		Message:  message,
 	}
 	stream.Send(msg)
@@ -70,10 +68,10 @@ func main() {
 	ctx := context.Background()
 	client := messengerpb.NewMessengerServiceClient(conn)
 
-	userId := &messengerpb.UserID{}
+	user := &messengerpb.User{}
 	signInData := &messengerpb.SignInData{}
 	scanner := bufio.NewScanner(os.Stdin)
-	for userId.Id == 0 {
+	for user.Id == 0 {
 		fmt.Println("Login: ")
 		if scanner.Scan() {
 			signInData.Login = scanner.Text()
@@ -82,12 +80,13 @@ func main() {
 		if scanner.Scan() {
 			signInData.Password = scanner.Text()
 		}
-		userId = signIn(ctx, client, signInData)
+		user = signIn(ctx, client, signInData)
 	}
+	fmt.Printf("Hello, %s!\n", user.FirstName)
 
-	go receiveMessage(ctx, client)
+	go receiveMessage(ctx, client, user)
 
 	for scanner.Scan() {
-		go sendMessage(ctx, client, scanner.Text())
+		go sendMessage(ctx, client, scanner.Text(), user)
 	}
 }

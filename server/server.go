@@ -11,6 +11,7 @@ import (
 	"github.com/dragun-igor/messenger/messengerpb"
 	"github.com/dragun-igor/messenger/resources"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type messengerServiceServer struct {
@@ -19,20 +20,18 @@ type messengerServiceServer struct {
 	resources *resources.Resources
 }
 
-func (s *messengerServiceServer) SignIn(context context.Context, signInData *messengerpb.SignInData) (*messengerpb.UserID, error) {
-	var id int64
-	rows, _ := s.resources.DB.Query("SELECT (id) FROM users WHERE login_name = $1 AND pswd = $2", signInData.Login, signInData.Password)
-	for rows.Next() {
-		err := rows.Scan(&id)
-		if err != nil {
-			return nil, err
-		}
+func (s *messengerServiceServer) SignIn(context context.Context, signInData *messengerpb.SignInData) (*messengerpb.User, error) {
+	id, name, err := s.resources.SignIn(signInData)
+	if err != nil {
+		return nil, err
 	}
-	return &messengerpb.UserID{Id: id}, nil
+	log.Printf("User %s ID %d logged in\n", name, id)
+	return &messengerpb.User{Id: id, FirstName: name}, nil
 }
 
 func (s *messengerServiceServer) SendMessage(msgStream messengerpb.MessengerService_SendMessageServer) error {
 	msg, err := msgStream.Recv()
+	msg.Time = timestamppb.Now()
 	if err == io.EOF {
 		return nil
 	}
@@ -42,13 +41,14 @@ func (s *messengerServiceServer) SendMessage(msgStream messengerpb.MessengerServ
 	ack := &messengerpb.MessageAck{Status: "received"}
 	msgStream.SendAndClose(ack)
 	go func() {
-		s.resources.SendMessage(msg)
+		for !s.resources.SendMessage(msg) {
+		}
 		s.clients[msg.Receiver.Id] <- msg
 	}()
 	return nil
 }
 
-func (s *messengerServiceServer) ReceiveMessage(userID *messengerpb.UserID, msgStream messengerpb.MessengerService_ReceiveMessageServer) error {
+func (s *messengerServiceServer) ReceiveMessage(userID *messengerpb.User, msgStream messengerpb.MessengerService_ReceiveMessageServer) error {
 	msgCh := make(chan *messengerpb.Message)
 	s.clients[userID.Id] = msgCh
 	for {
@@ -56,7 +56,7 @@ func (s *messengerServiceServer) ReceiveMessage(userID *messengerpb.UserID, msgS
 		case <-msgStream.Context().Done():
 			return nil
 		case msg := <-msgCh:
-			fmt.Printf("%v -> %v: %v \n", msg.Sender, msg.Receiver, msg.Message)
+			fmt.Printf("%v -> %v: %v \n", msg.Sender.Id, msg.Receiver.Id, msg.Message)
 			msgStream.Send(msg)
 		}
 	}

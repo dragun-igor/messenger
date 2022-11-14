@@ -5,4 +5,4 @@ go build server/server.go
 go build client/client.go
 start "Server" "server.exe"
 start "Client Igor" "client.exe"
-start "Client Ira" "client.exe" -sender=2 -receiver=1
+start "Client Ira" "client.exe" -receiver=1
