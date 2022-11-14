@@ -6,6 +6,9 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/dragun-igor/messenger/config"
 	"github.com/dragun-igor/messenger/messengerpb"
@@ -20,8 +23,8 @@ type messengerServiceServer struct {
 	resources *resources.Resources
 }
 
-func (s *messengerServiceServer) SignIn(context context.Context, signInData *messengerpb.SignInData) (*messengerpb.User, error) {
-	id, name, err := s.resources.SignIn(signInData)
+func (s *messengerServiceServer) SignIn(ctx context.Context, signInData *messengerpb.SignInData) (*messengerpb.User, error) {
+	id, name, err := s.resources.SignIn(ctx, signInData)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +44,7 @@ func (s *messengerServiceServer) SendMessage(msgStream messengerpb.MessengerServ
 	ack := &messengerpb.MessageAck{Status: "received"}
 	msgStream.SendAndClose(ack)
 	go func() {
-		for !s.resources.SendMessage(msg) {
+		for !s.resources.SendMessage(context.Background(), msg) {
 		}
 		s.clients[msg.Receiver.Id] <- msg
 	}()
@@ -63,10 +66,15 @@ func (s *messengerServiceServer) ReceiveMessage(userID *messengerpb.User, msgStr
 }
 
 func newServer() *messengerServiceServer {
-	context := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		exit := make(chan os.Signal, 1)
+		signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
+		cancel()
+	}()
 	return &messengerServiceServer{
 		clients:   make(map[int64]chan *messengerpb.Message),
-		resources: resources.GetResources(context, config.New()),
+		resources: resources.GetResources(ctx, config.New()),
 	}
 }
 

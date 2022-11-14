@@ -47,11 +47,11 @@ func connectDB(ctx context.Context, config *config.Config) *sql.DB {
 	return db
 }
 
-func (r *Resources) SignIn(signInData *messengerpb.SignInData) (int64, string, error) {
+func (r *Resources) SignIn(ctx context.Context, signInData *messengerpb.SignInData) (int64, string, error) {
 	var id int64
 	var name string
 	query := fmt.Sprintf("SELECT id, first_name FROM %s WHERE login_name = $1 AND pswd = $2", userTableName)
-	rows, _ := r.DB.Query(query, signInData.Login, signInData.Password)
+	rows, _ := r.DB.QueryContext(ctx, query, signInData.Login, signInData.Password)
 	for rows.Next() {
 		err := rows.Scan(&id, &name)
 		if err != nil {
@@ -75,9 +75,9 @@ func (r *Resources) GetAllMessages(ctx context.Context, user *messengerpb.User) 
 
 }
 
-func (r *Resources) SendMessage(msg *messengerpb.Message) bool {
+func (r *Resources) SendMessage(ctx context.Context, msg *messengerpb.Message) bool {
 	query := fmt.Sprintf("INSERT INTO %s (time, sender_id, receiver_id, msg) VALUES ($1, $2, $3, $4);", messageTableName)
-	_, err := r.DB.Exec(query, msg.Time.AsTime(), msg.Sender.Id, msg.Receiver.Id, msg.Message)
+	_, err := r.DB.ExecContext(ctx, query, msg.Time.AsTime(), msg.Sender.Id, msg.Receiver.Id, msg.Message)
 	if err != nil {
 		log.Printf("Query is not executed: %v", err)
 		return false
