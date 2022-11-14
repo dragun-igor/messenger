@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/dragun-igor/messenger/messengerpb"
 	"google.golang.org/grpc"
@@ -17,6 +18,14 @@ var (
 	receiverName = flag.Int64("receiver", 2, "Receiver name for messaging")
 	tcpServer    = flag.String("server", ":5400", "Tcp server")
 )
+
+func signUp(ctx context.Context, client messengerpb.MessengerServiceClient, signUpData *messengerpb.SignUpData) *messengerpb.User {
+	user, err := client.SignUp(ctx, signUpData)
+	if err != nil {
+		fmt.Printf("err: %v", err)
+	}
+	return user
+}
 
 func signIn(ctx context.Context, client messengerpb.MessengerServiceClient, signInData *messengerpb.SignInData) *messengerpb.User {
 	user, err := client.SignIn(ctx, signInData)
@@ -70,18 +79,52 @@ func main() {
 
 	user := &messengerpb.User{}
 	signInData := &messengerpb.SignInData{}
+	signUpData := &messengerpb.SignUpData{SignInData: &messengerpb.SignInData{}}
 	scanner := bufio.NewScanner(os.Stdin)
-	for user.Id == 0 {
-		fmt.Println("Login: ")
-		if scanner.Scan() {
-			signInData.Login = scanner.Text()
+	fmt.Println("Are you already have a account?")
+	var sign string
+	if scanner.Scan() {
+		str := strings.ToLower(scanner.Text())
+		if str == "n" || str == "no" {
+			sign = "Sign Up"
+		} else {
+			sign = "Sign In"
 		}
-		fmt.Println("Password: ")
-		if scanner.Scan() {
-			signInData.Password = scanner.Text()
-		}
-		user = signIn(ctx, client, signInData)
 	}
+
+	switch sign {
+	case "Sign In":
+		for user.Id == 0 {
+			fmt.Println("Login: ")
+			if scanner.Scan() {
+				signInData.Login = scanner.Text()
+			}
+			fmt.Println("Password: ")
+			if scanner.Scan() {
+				signInData.Password = scanner.Text()
+			}
+			user = signIn(ctx, client, signInData)
+		}
+	case "Sign Up":
+		fmt.Println("Your first name: ")
+		if scanner.Scan() {
+			signUpData.FirstName = scanner.Text()
+		}
+		fmt.Println("Your last name (optional): ")
+		if scanner.Scan() {
+			signUpData.SecondName = scanner.Text()
+		}
+		fmt.Println("Your login name: ")
+		if scanner.Scan() {
+			signUpData.SignInData.Login = scanner.Text()
+		}
+		fmt.Println("Your password: ")
+		if scanner.Scan() {
+			signUpData.SignInData.Password = scanner.Text()
+		}
+		user = signUp(ctx, client, signUpData)
+	}
+
 	fmt.Printf("Hello, %s!\n", user.FirstName)
 
 	go receiveMessage(ctx, client, user)

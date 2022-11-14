@@ -47,6 +47,20 @@ func connectDB(ctx context.Context, config *config.Config) *sql.DB {
 	return db
 }
 
+func (r *Resources) SignUp(ctx context.Context, signUpData *messengerpb.SignUpData) (int64, string, error) {
+	var id int64
+	var name string
+	query := fmt.Sprintf("INSERT INTO %s first_name, second_name, login_name, pswd VALUES ($1, $2, $3, $4) RETURNING id;", userTableName)
+	rows, _ := r.DB.QueryContext(ctx, query, signUpData.FirstName, signUpData.SecondName, signUpData.SignInData.Login, signUpData.SignInData.Password)
+	for rows.Next() {
+		err := rows.Scan(&id, &name)
+		if err != nil {
+			return id, name, err
+		}
+	}
+	return id, name, nil
+}
+
 func (r *Resources) SignIn(ctx context.Context, signInData *messengerpb.SignInData) (int64, string, error) {
 	var id int64
 	var name string

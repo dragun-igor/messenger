@@ -23,6 +23,15 @@ type messengerServiceServer struct {
 	resources *resources.Resources
 }
 
+func (s *messengerServiceServer) SignUp(ctx context.Context, signUpData *messengerpb.SignUpData) (*messengerpb.User, error) {
+	id, name, err := s.resources.SignUp(ctx, signUpData)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("User %s ID %d logged in\n", name, id)
+	return &messengerpb.User{Id: id, FirstName: name}, nil
+}
+
 func (s *messengerServiceServer) SignIn(ctx context.Context, signInData *messengerpb.SignInData) (*messengerpb.User, error) {
 	id, name, err := s.resources.SignIn(ctx, signInData)
 	if err != nil {
