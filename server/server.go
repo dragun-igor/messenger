@@ -14,9 +14,15 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+type Client struct {
+	IsOnline         bool
+	Message          chan *messengerpb.Message
+	RequestToFriends chan *messengerpb.RequestAddToFriendsListMessage
+}
+
 type messengerServiceServer struct {
 	messengerpb.UnimplementedMessengerServiceServer
-	clients   map[int64]chan *messengerpb.Message
+	clients   map[int64]*Client
 	resources *resources.Resources
 }
 
@@ -56,6 +62,32 @@ func (s *messengerServiceServer) CheckLogin(ctx context.Context, checkLoginMessa
 	return ack, err
 }
 
+func (s *messengerServiceServer) RequestAddToFriendsList(ctx context.Context, requestAddToFriendsListMessage *messengerpb.RequestAddToFriendsListMessage) (*messengerpb.RequestAddToFriendsListAck, error) {
+	ack, requestAddToFriendsListMessage, err := s.resources.RequestAddToFriendsList(ctx, requestAddToFriendsListMessage)
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		s.clients[requestAddToFriendsListMessage.Receiver.Id].RequestToFriends <- requestAddToFriendsListMessage
+	}()
+	return ack, nil
+}
+
+func (s *messengerServiceServer) ListenAddToFriendsList(userData *messengerpb.UserData, userStream messengerpb.MessengerService_ListenAddToFriendsListServer) error {
+	go func() {
+		for {
+			select {
+			case <-userStream.Context().Done():
+				return
+			case request := <-s.clients[userData.Id].RequestToFriends:
+				fmt.Printf("user id: %v, name: %v requested adding to friends list user id: %v name: %v \n", request.Requester.Id, request.Requester.Name, request.Receiver.Id, request.Receiver.Name)
+				userStream.Send(&messengerpb.UserData{Name: request.Requester.Name})
+			}
+		}
+	}()
+	return nil
+}
+
 func (s *messengerServiceServer) SendMessage(msgStream messengerpb.MessengerService_SendMessageServer) error {
 	msg, err := msgStream.Recv()
 	msg.Time = timestamppb.Now()
@@ -68,25 +100,30 @@ func (s *messengerServiceServer) SendMessage(msgStream messengerpb.MessengerServ
 	ack := &messengerpb.MessageAck{Status: "received"}
 	msgStream.SendAndClose(ack)
 	go func() {
-		for !s.resources.SendMessage(context.Background(), msg) {
+		var id int64
+		for id == 0 {
+			id = s.resources.SendMessage(context.Background(), msg)
 		}
-		s.clients[msg.Receiver.Id] <- msg
+		s.clients[id].Message <- msg
 	}()
 	return nil
 }
 
 func (s *messengerServiceServer) ReceiveMessage(userData *messengerpb.UserData, msgStream messengerpb.MessengerService_ReceiveMessageServer) error {
 	msgCh := make(chan *messengerpb.Message)
-	s.clients[userData.Id] = msgCh
-	for {
-		select {
-		case <-msgStream.Context().Done():
-			return nil
-		case msg := <-msgCh:
-			fmt.Printf("%v -> %v: %v \n", msg.Sender.Id, msg.Receiver.Id, msg.Message)
-			msgStream.Send(msg)
+	s.clients[userData.Id].Message = msgCh
+	go func() {
+		for {
+			select {
+			case <-msgStream.Context().Done():
+				return
+			case msg := <-msgCh:
+				fmt.Printf("%v -> %v: %v \n", msg.Sender.Id, msg.Receiver.Id, msg.Message)
+				msgStream.Send(msg)
+			}
 		}
-	}
+	}()
+	return nil
 }
 
 func newServer() *messengerServiceServer {
@@ -96,9 +133,24 @@ func newServer() *messengerServiceServer {
 	// 	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
 	// 	cancel()
 	// }()
+	// clients := make(map[int64]*Client)
+	resources := resources.GetResources(context.Background(), config.New())
+	users, err := resources.GetAllUsers(context.Background())
+	if err != nil {
+		log.Fatalf("err: %v \n", err)
+	}
+	clients := make(map[int64]*Client, len(users))
+	for _, id := range users {
+		clients[id] = &Client{
+			IsOnline:         false,
+			Message:          make(chan *messengerpb.Message),
+			RequestToFriends: make(chan *messengerpb.RequestAddToFriendsListMessage),
+		}
+	}
+
 	return &messengerServiceServer{
-		clients:   make(map[int64]chan *messengerpb.Message),
-		resources: resources.GetResources(context.Background(), config.New()),
+		clients:   clients,
+		resources: resources,
 	}
 }
 

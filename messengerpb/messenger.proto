@@ -11,8 +11,19 @@ service MessengerService {
     rpc SignUp(SignUpData) returns (UserData) {}
     rpc CheckName(CheckNameMessage) returns (CheckNameAck) {}
     rpc CheckLogin(CheckLoginMessage) returns (CheckLoginAck) {}
+    rpc RequestAddToFriendsList(RequestAddToFriendsListMessage) returns (RequestAddToFriendsListAck) {}
+    rpc ListenAddToFriendsList(UserData) returns (stream UserData) {}
     rpc SendMessage(stream Message) returns (MessageAck) {}
     rpc ReceiveMessage(UserData) returns (stream Message) {}
+}
+
+message RequestAddToFriendsListMessage {
+    UserData requester = 1;
+    UserData receiver = 2;
+}
+
+message RequestAddToFriendsListAck {
+    string status = 1;
 }
 
 message CheckNameMessage {

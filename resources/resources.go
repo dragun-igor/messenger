@@ -3,6 +3,7 @@ package resources
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 
@@ -13,8 +14,10 @@ import (
 )
 
 const (
-	userTableName    = "users"
-	messageTableName = "messages"
+	usersTableName            = "users"
+	messagesTableName         = "messages"
+	friendsListTableName      = "friends"
+	requestToFriendsTableName = "requests_to_friends_list"
 )
 
 type Resources struct {
@@ -50,7 +53,7 @@ func connectDB(ctx context.Context, config *config.Config) *sql.DB {
 func (r *Resources) SignUp(ctx context.Context, signUpData *messengerpb.SignUpData) (*messengerpb.UserData, error) {
 	var id int64
 	var name string
-	query := fmt.Sprintf("INSERT INTO %s (login, name, password) VALUES ($1, $2, $3) RETURNING id, name;", userTableName)
+	query := fmt.Sprintf("INSERT INTO %s (login, name, password) VALUES ($1, $2, $3) RETURNING id, name;", usersTableName)
 	row := r.DB.QueryRowContext(ctx, query, signUpData.SignInData.Login, signUpData.UserData.Name, signUpData.SignInData.Password)
 	if err := row.Scan(&id, &name); err != nil {
 		return nil, err
@@ -65,7 +68,7 @@ func (r *Resources) SignUp(ctx context.Context, signUpData *messengerpb.SignUpDa
 func (r *Resources) SignIn(ctx context.Context, signInData *messengerpb.SignInData) (*messengerpb.UserData, error) {
 	var id int64
 	var name string
-	query := fmt.Sprintf("SELECT id, name FROM %s WHERE login = $1 AND password = $2", userTableName)
+	query := fmt.Sprintf("SELECT id, name FROM %s WHERE login = $1 AND password = $2;", usersTableName)
 	row := r.DB.QueryRowContext(ctx, query, signInData.Login, signInData.Password)
 	if err := row.Scan(&id, &name); err != nil {
 		return nil, err
@@ -78,7 +81,7 @@ func (r *Resources) SignIn(ctx context.Context, signInData *messengerpb.SignInDa
 }
 
 func (r *Resources) CheckName(ctx context.Context, checkNameMessage *messengerpb.CheckNameMessage) (*messengerpb.CheckNameAck, error) {
-	query := fmt.Sprintf("SELECT * FROM %s WHERE name = $1", userTableName)
+	query := fmt.Sprintf("SELECT * FROM %s WHERE name = $1;", usersTableName)
 	rows, err := r.DB.QueryContext(ctx, query, checkNameMessage.Name)
 	if err != nil {
 		return nil, err
@@ -88,13 +91,40 @@ func (r *Resources) CheckName(ctx context.Context, checkNameMessage *messengerpb
 }
 
 func (r *Resources) CheckLogin(ctx context.Context, checkLoginMessage *messengerpb.CheckLoginMessage) (*messengerpb.CheckLoginAck, error) {
-	query := fmt.Sprintf("SELECT * FROM %s WHERE login = $1", userTableName)
+	query := fmt.Sprintf("SELECT * FROM %s WHERE login = $1;", usersTableName)
 	rows, err := r.DB.QueryContext(ctx, query, checkLoginMessage.Login)
 	if err != nil {
 		return nil, err
 	}
 	ack := &messengerpb.CheckLoginAck{Busy: rows.Next()}
 	return ack, nil
+}
+
+func (r *Resources) RequestAddToFriendsList(ctx context.Context, requestAddToFriendsListMessage *messengerpb.RequestAddToFriendsListMessage) (*messengerpb.RequestAddToFriendsListAck, *messengerpb.RequestAddToFriendsListMessage, error) {
+	var id int64
+	query := fmt.Sprintf("SELECT id FROM %s WHERE name = $1;", usersTableName)
+	row := r.DB.QueryRowContext(ctx, query, requestAddToFriendsListMessage.Receiver.Name)
+	row.Scan(&id)
+	query = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE requester = $1 AND receiver = $2;", requestToFriendsTableName)
+	row = r.DB.QueryRowContext(ctx, query, requestAddToFriendsListMessage.Receiver.Name, id)
+	var number int
+	row.Scan(&number)
+	if number > 0 {
+		return nil, nil, errors.New("request is active already")
+	}
+	query = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE requester = $1 AND receiver = $2;", friendsListTableName)
+	row = r.DB.QueryRowContext(ctx, query, requestAddToFriendsListMessage.Receiver.Name, id)
+	row.Scan(&number)
+	if number > 0 {
+		return nil, nil, errors.New("user in your friends list already")
+	}
+	query = fmt.Sprintf("INSERT INTO %s (requester, receiver) VALUES ($1, $2);", requestToFriendsTableName)
+	_, err := r.DB.ExecContext(ctx, query, requestAddToFriendsListMessage.Requester.Id, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	requestAddToFriendsListMessage.Receiver.Id = id
+	return &messengerpb.RequestAddToFriendsListAck{Status: "received"}, requestAddToFriendsListMessage, nil
 }
 
 // func (r *Resources) GetAllMessages(ctx context.Context, user *messengerpb.UserData) []*messengerpb.Message {
@@ -111,14 +141,36 @@ func (r *Resources) CheckLogin(ctx context.Context, checkLoginMessage *messenger
 
 // }
 
-func (r *Resources) SendMessage(ctx context.Context, msg *messengerpb.Message) bool {
-	query := fmt.Sprintf("INSERT INTO %s (time, sender_id, receiver_id, msg) VALUES ($1, $2, $3, $4);", messageTableName)
-	_, err := r.DB.ExecContext(ctx, query, msg.Time.AsTime(), msg.Sender.Id, msg.Receiver.Id, msg.Message)
+func (r *Resources) GetAllUsers(ctx context.Context) ([]int64, error) {
+	var usersNumber int
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %s", usersTableName)
+	res := r.DB.QueryRowContext(ctx, query)
+	res.Scan(&usersNumber)
+	users := make([]int64, 0, usersNumber)
+	query = fmt.Sprintf("SELECT id FROM %s", usersTableName)
+	rows, err := r.DB.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var id int64
+		rows.Scan(&id)
+		users = append(users, id)
+	}
+	return users, nil
+}
+
+func (r *Resources) SendMessage(ctx context.Context, msg *messengerpb.Message) int64 {
+	var id int64
+	query := fmt.Sprintf("SELECT id FROM %s WHERE name = $1", usersTableName)
+	row := r.DB.QueryRowContext(ctx, query, msg.Receiver.Name)
+	row.Scan(&id)
+	query = fmt.Sprintf("INSERT INTO %s (time, sender_id, receiver_id, msg) VALUES ($1, $2, $3, $4);", messagesTableName)
+	_, err := r.DB.ExecContext(ctx, query, msg.Time.AsTime(), msg.Sender.Id, id, msg.Message)
 	if err != nil {
 		log.Printf("Query is not executed: %v", err)
-		return false
 	}
-	return true
+	return id
 }
 
 func GetResources(ctx context.Context, config *config.Config) *Resources {

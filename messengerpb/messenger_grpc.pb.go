@@ -26,6 +26,8 @@ type MessengerServiceClient interface {
 	SignUp(ctx context.Context, in *SignUpData, opts ...grpc.CallOption) (*UserData, error)
 	CheckName(ctx context.Context, in *CheckNameMessage, opts ...grpc.CallOption) (*CheckNameAck, error)
 	CheckLogin(ctx context.Context, in *CheckLoginMessage, opts ...grpc.CallOption) (*CheckLoginAck, error)
+	RequestAddToFriendsList(ctx context.Context, in *RequestAddToFriendsListMessage, opts ...grpc.CallOption) (*RequestAddToFriendsListAck, error)
+	ListenAddToFriendsList(ctx context.Context, in *UserData, opts ...grpc.CallOption) (MessengerService_ListenAddToFriendsListClient, error)
 	SendMessage(ctx context.Context, opts ...grpc.CallOption) (MessengerService_SendMessageClient, error)
 	ReceiveMessage(ctx context.Context, in *UserData, opts ...grpc.CallOption) (MessengerService_ReceiveMessageClient, error)
 }
@@ -74,8 +76,49 @@ func (c *messengerServiceClient) CheckLogin(ctx context.Context, in *CheckLoginM
 	return out, nil
 }
 
+func (c *messengerServiceClient) RequestAddToFriendsList(ctx context.Context, in *RequestAddToFriendsListMessage, opts ...grpc.CallOption) (*RequestAddToFriendsListAck, error) {
+	out := new(RequestAddToFriendsListAck)
+	err := c.cc.Invoke(ctx, "/messengerpb.MessengerService/RequestAddToFriendsList", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messengerServiceClient) ListenAddToFriendsList(ctx context.Context, in *UserData, opts ...grpc.CallOption) (MessengerService_ListenAddToFriendsListClient, error) {
+	stream, err := c.cc.NewStream(ctx, &MessengerService_ServiceDesc.Streams[0], "/messengerpb.MessengerService/ListenAddToFriendsList", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &messengerServiceListenAddToFriendsListClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type MessengerService_ListenAddToFriendsListClient interface {
+	Recv() (*UserData, error)
+	grpc.ClientStream
+}
+
+type messengerServiceListenAddToFriendsListClient struct {
+	grpc.ClientStream
+}
+
+func (x *messengerServiceListenAddToFriendsListClient) Recv() (*UserData, error) {
+	m := new(UserData)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *messengerServiceClient) SendMessage(ctx context.Context, opts ...grpc.CallOption) (MessengerService_SendMessageClient, error) {
-	stream, err := c.cc.NewStream(ctx, &MessengerService_ServiceDesc.Streams[0], "/messengerpb.MessengerService/SendMessage", opts...)
+	stream, err := c.cc.NewStream(ctx, &MessengerService_ServiceDesc.Streams[1], "/messengerpb.MessengerService/SendMessage", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +152,7 @@ func (x *messengerServiceSendMessageClient) CloseAndRecv() (*MessageAck, error) 
 }
 
 func (c *messengerServiceClient) ReceiveMessage(ctx context.Context, in *UserData, opts ...grpc.CallOption) (MessengerService_ReceiveMessageClient, error) {
-	stream, err := c.cc.NewStream(ctx, &MessengerService_ServiceDesc.Streams[1], "/messengerpb.MessengerService/ReceiveMessage", opts...)
+	stream, err := c.cc.NewStream(ctx, &MessengerService_ServiceDesc.Streams[2], "/messengerpb.MessengerService/ReceiveMessage", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -148,6 +191,8 @@ type MessengerServiceServer interface {
 	SignUp(context.Context, *SignUpData) (*UserData, error)
 	CheckName(context.Context, *CheckNameMessage) (*CheckNameAck, error)
 	CheckLogin(context.Context, *CheckLoginMessage) (*CheckLoginAck, error)
+	RequestAddToFriendsList(context.Context, *RequestAddToFriendsListMessage) (*RequestAddToFriendsListAck, error)
+	ListenAddToFriendsList(*UserData, MessengerService_ListenAddToFriendsListServer) error
 	SendMessage(MessengerService_SendMessageServer) error
 	ReceiveMessage(*UserData, MessengerService_ReceiveMessageServer) error
 	mustEmbedUnimplementedMessengerServiceServer()
@@ -168,6 +213,12 @@ func (UnimplementedMessengerServiceServer) CheckName(context.Context, *CheckName
 }
 func (UnimplementedMessengerServiceServer) CheckLogin(context.Context, *CheckLoginMessage) (*CheckLoginAck, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CheckLogin not implemented")
+}
+func (UnimplementedMessengerServiceServer) RequestAddToFriendsList(context.Context, *RequestAddToFriendsListMessage) (*RequestAddToFriendsListAck, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RequestAddToFriendsList not implemented")
+}
+func (UnimplementedMessengerServiceServer) ListenAddToFriendsList(*UserData, MessengerService_ListenAddToFriendsListServer) error {
+	return status.Errorf(codes.Unimplemented, "method ListenAddToFriendsList not implemented")
 }
 func (UnimplementedMessengerServiceServer) SendMessage(MessengerService_SendMessageServer) error {
 	return status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
@@ -260,6 +311,45 @@ func _MessengerService_CheckLogin_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessengerService_RequestAddToFriendsList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestAddToFriendsListMessage)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessengerServiceServer).RequestAddToFriendsList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/messengerpb.MessengerService/RequestAddToFriendsList",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessengerServiceServer).RequestAddToFriendsList(ctx, req.(*RequestAddToFriendsListMessage))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessengerService_ListenAddToFriendsList_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(UserData)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(MessengerServiceServer).ListenAddToFriendsList(m, &messengerServiceListenAddToFriendsListServer{stream})
+}
+
+type MessengerService_ListenAddToFriendsListServer interface {
+	Send(*UserData) error
+	grpc.ServerStream
+}
+
+type messengerServiceListenAddToFriendsListServer struct {
+	grpc.ServerStream
+}
+
+func (x *messengerServiceListenAddToFriendsListServer) Send(m *UserData) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 func _MessengerService_SendMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
 	return srv.(MessengerServiceServer).SendMessage(&messengerServiceSendMessageServer{stream})
 }
@@ -330,8 +420,17 @@ var MessengerService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "CheckLogin",
 			Handler:    _MessengerService_CheckLogin_Handler,
 		},
+		{
+			MethodName: "RequestAddToFriendsList",
+			Handler:    _MessengerService_RequestAddToFriendsList_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "ListenAddToFriendsList",
+			Handler:       _MessengerService_ListenAddToFriendsList_Handler,
+			ServerStreams: true,
+		},
 		{
 			StreamName:    "SendMessage",
 			Handler:       _MessengerService_SendMessage_Handler,
