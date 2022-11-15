@@ -5,6 +5,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -141,7 +142,7 @@ func receiveMessage(ctx context.Context, client messengerpb.MessengerServiceClie
 	}
 	for {
 		in, err := stream.Recv()
-		if err != nil {
+		if err != nil && err != io.EOF {
 			log.Fatalf("Failed to receive message from user. \nErr: %v \n", err)
 		}
 		fmt.Printf("%v: %v \n", in.Sender.Name, in.Message)
