@@ -6,9 +6,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/dragun-igor/messenger/config"
 	"github.com/dragun-igor/messenger/messengerpb"
@@ -23,22 +20,40 @@ type messengerServiceServer struct {
 	resources *resources.Resources
 }
 
-func (s *messengerServiceServer) SignUp(ctx context.Context, signUpData *messengerpb.SignUpData) (*messengerpb.User, error) {
-	id, name, err := s.resources.SignUp(ctx, signUpData)
+func (s *messengerServiceServer) SignUp(ctx context.Context, signUpData *messengerpb.SignUpData) (*messengerpb.UserData, error) {
+	userData, err := s.resources.SignUp(ctx, signUpData)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("User %s ID %d logged in\n", name, id)
-	return &messengerpb.User{Id: id, FirstName: name}, nil
+	log.Printf("User %s ID %d logged in\n", userData.Name, userData.Id)
+	return userData, nil
 }
 
-func (s *messengerServiceServer) SignIn(ctx context.Context, signInData *messengerpb.SignInData) (*messengerpb.User, error) {
-	id, name, err := s.resources.SignIn(ctx, signInData)
+func (s *messengerServiceServer) SignIn(ctx context.Context, signInData *messengerpb.SignInData) (*messengerpb.UserData, error) {
+	userData, err := s.resources.SignIn(ctx, signInData)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("User %s ID %d logged in\n", name, id)
-	return &messengerpb.User{Id: id, FirstName: name}, nil
+	log.Printf("User %s ID %d logged in\n", userData.Name, userData.Id)
+	return userData, nil
+}
+
+func (s *messengerServiceServer) CheckName(ctx context.Context, checkNameMessage *messengerpb.CheckNameMessage) (*messengerpb.CheckNameAck, error) {
+	ack, err := s.resources.CheckName(ctx, checkNameMessage)
+	if err != nil {
+		fmt.Printf("err: %v \n", err)
+	}
+	fmt.Println(ack.Busy)
+	fmt.Println(err)
+	return ack, err
+}
+
+func (s *messengerServiceServer) CheckLogin(ctx context.Context, checkLoginMessage *messengerpb.CheckLoginMessage) (*messengerpb.CheckLoginAck, error) {
+	ack, err := s.resources.CheckLogin(ctx, checkLoginMessage)
+	if err != nil {
+		fmt.Printf("err: %v \n", err)
+	}
+	return ack, err
 }
 
 func (s *messengerServiceServer) SendMessage(msgStream messengerpb.MessengerService_SendMessageServer) error {
@@ -60,9 +75,9 @@ func (s *messengerServiceServer) SendMessage(msgStream messengerpb.MessengerServ
 	return nil
 }
 
-func (s *messengerServiceServer) ReceiveMessage(userID *messengerpb.User, msgStream messengerpb.MessengerService_ReceiveMessageServer) error {
+func (s *messengerServiceServer) ReceiveMessage(userData *messengerpb.UserData, msgStream messengerpb.MessengerService_ReceiveMessageServer) error {
 	msgCh := make(chan *messengerpb.Message)
-	s.clients[userID.Id] = msgCh
+	s.clients[userData.Id] = msgCh
 	for {
 		select {
 		case <-msgStream.Context().Done():
@@ -75,15 +90,15 @@ func (s *messengerServiceServer) ReceiveMessage(userID *messengerpb.User, msgStr
 }
 
 func newServer() *messengerServiceServer {
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		exit := make(chan os.Signal, 1)
-		signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
-		cancel()
-	}()
+	// ctx, cancel := context.WithCancel(context.Background())
+	// go func() {
+	// 	exit := make(chan os.Signal, 1)
+	// 	signal.Notify(exit, os.Interrupt, syscall.SIGTERM)
+	// 	cancel()
+	// }()
 	return &messengerServiceServer{
 		clients:   make(map[int64]chan *messengerpb.Message),
-		resources: resources.GetResources(ctx, config.New()),
+		resources: resources.GetResources(context.Background(), config.New()),
 	}
 }
 

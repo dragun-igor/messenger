@@ -7,16 +7,33 @@ package messengerpb;
 import "google/protobuf/timestamp.proto";
 
 service MessengerService {
-    rpc SignUp(SignUpData) returns (User) {}
-    rpc SignIn(SignInData) returns (User) {}
+    rpc SignIn(SignInData) returns (UserData) {}
+    rpc SignUp(SignUpData) returns (UserData) {}
+    rpc CheckName(CheckNameMessage) returns (CheckNameAck) {}
+    rpc CheckLogin(CheckLoginMessage) returns (CheckLoginAck) {}
     rpc SendMessage(stream Message) returns (MessageAck) {}
-    rpc ReceiveMessage(User) returns (stream Message) {}
+    rpc ReceiveMessage(UserData) returns (stream Message) {}
+}
+
+message CheckNameMessage {
+    string name = 1;
+}
+
+message CheckNameAck {
+    bool busy = 1;
+}
+
+message CheckLoginMessage {
+    string login = 1;
+}
+
+message CheckLoginAck {
+    bool busy = 1;
 }
 
 message SignUpData {
-    string first_name = 1;
-    string second_name = 2;
-    SignInData signInData = 3;
+    SignInData signInData = 1;
+    UserData userData = 2;
 }
 
 message SignInData {
@@ -24,15 +41,15 @@ message SignInData {
     string password = 2;
 }
 
-message User {
+message UserData {
     int64 id = 1;
-    string first_name = 2;
+    string name = 2;
 }
 
 message Message {
     google.protobuf.Timestamp time = 1;
-    User sender = 2;
-    User receiver = 3;
+    UserData sender = 2;
+    UserData receiver = 3;
     string message = 4;
 }
 

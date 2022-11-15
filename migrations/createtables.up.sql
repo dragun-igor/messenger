@@ -1,9 +1,8 @@
 CREATE TABLE IF NOT EXISTS users (
     id integer PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
-    first_name text,
-    second_name text,
-    login_name text NOT NULL UNIQUE,
-    pswd text NOT NULL
+    login text NOT NULL UNIQUE,
+    name text NOT NULL UNIQUE,
+    password text NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS messages (

@@ -22,10 +22,12 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MessengerServiceClient interface {
-	SignUp(ctx context.Context, in *SignUpData, opts ...grpc.CallOption) (*User, error)
-	SignIn(ctx context.Context, in *SignInData, opts ...grpc.CallOption) (*User, error)
+	SignIn(ctx context.Context, in *SignInData, opts ...grpc.CallOption) (*UserData, error)
+	SignUp(ctx context.Context, in *SignUpData, opts ...grpc.CallOption) (*UserData, error)
+	CheckName(ctx context.Context, in *CheckNameMessage, opts ...grpc.CallOption) (*CheckNameAck, error)
+	CheckLogin(ctx context.Context, in *CheckLoginMessage, opts ...grpc.CallOption) (*CheckLoginAck, error)
 	SendMessage(ctx context.Context, opts ...grpc.CallOption) (MessengerService_SendMessageClient, error)
-	ReceiveMessage(ctx context.Context, in *User, opts ...grpc.CallOption) (MessengerService_ReceiveMessageClient, error)
+	ReceiveMessage(ctx context.Context, in *UserData, opts ...grpc.CallOption) (MessengerService_ReceiveMessageClient, error)
 }
 
 type messengerServiceClient struct {
@@ -36,8 +38,17 @@ func NewMessengerServiceClient(cc grpc.ClientConnInterface) MessengerServiceClie
 	return &messengerServiceClient{cc}
 }
 
-func (c *messengerServiceClient) SignUp(ctx context.Context, in *SignUpData, opts ...grpc.CallOption) (*User, error) {
-	out := new(User)
+func (c *messengerServiceClient) SignIn(ctx context.Context, in *SignInData, opts ...grpc.CallOption) (*UserData, error) {
+	out := new(UserData)
+	err := c.cc.Invoke(ctx, "/messengerpb.MessengerService/SignIn", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messengerServiceClient) SignUp(ctx context.Context, in *SignUpData, opts ...grpc.CallOption) (*UserData, error) {
+	out := new(UserData)
 	err := c.cc.Invoke(ctx, "/messengerpb.MessengerService/SignUp", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -45,9 +56,18 @@ func (c *messengerServiceClient) SignUp(ctx context.Context, in *SignUpData, opt
 	return out, nil
 }
 
-func (c *messengerServiceClient) SignIn(ctx context.Context, in *SignInData, opts ...grpc.CallOption) (*User, error) {
-	out := new(User)
-	err := c.cc.Invoke(ctx, "/messengerpb.MessengerService/SignIn", in, out, opts...)
+func (c *messengerServiceClient) CheckName(ctx context.Context, in *CheckNameMessage, opts ...grpc.CallOption) (*CheckNameAck, error) {
+	out := new(CheckNameAck)
+	err := c.cc.Invoke(ctx, "/messengerpb.MessengerService/CheckName", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messengerServiceClient) CheckLogin(ctx context.Context, in *CheckLoginMessage, opts ...grpc.CallOption) (*CheckLoginAck, error) {
+	out := new(CheckLoginAck)
+	err := c.cc.Invoke(ctx, "/messengerpb.MessengerService/CheckLogin", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +108,7 @@ func (x *messengerServiceSendMessageClient) CloseAndRecv() (*MessageAck, error) 
 	return m, nil
 }
 
-func (c *messengerServiceClient) ReceiveMessage(ctx context.Context, in *User, opts ...grpc.CallOption) (MessengerService_ReceiveMessageClient, error) {
+func (c *messengerServiceClient) ReceiveMessage(ctx context.Context, in *UserData, opts ...grpc.CallOption) (MessengerService_ReceiveMessageClient, error) {
 	stream, err := c.cc.NewStream(ctx, &MessengerService_ServiceDesc.Streams[1], "/messengerpb.MessengerService/ReceiveMessage", opts...)
 	if err != nil {
 		return nil, err
@@ -124,10 +144,12 @@ func (x *messengerServiceReceiveMessageClient) Recv() (*Message, error) {
 // All implementations must embed UnimplementedMessengerServiceServer
 // for forward compatibility
 type MessengerServiceServer interface {
-	SignUp(context.Context, *SignUpData) (*User, error)
-	SignIn(context.Context, *SignInData) (*User, error)
+	SignIn(context.Context, *SignInData) (*UserData, error)
+	SignUp(context.Context, *SignUpData) (*UserData, error)
+	CheckName(context.Context, *CheckNameMessage) (*CheckNameAck, error)
+	CheckLogin(context.Context, *CheckLoginMessage) (*CheckLoginAck, error)
 	SendMessage(MessengerService_SendMessageServer) error
-	ReceiveMessage(*User, MessengerService_ReceiveMessageServer) error
+	ReceiveMessage(*UserData, MessengerService_ReceiveMessageServer) error
 	mustEmbedUnimplementedMessengerServiceServer()
 }
 
@@ -135,16 +157,22 @@ type MessengerServiceServer interface {
 type UnimplementedMessengerServiceServer struct {
 }
 
-func (UnimplementedMessengerServiceServer) SignUp(context.Context, *SignUpData) (*User, error) {
+func (UnimplementedMessengerServiceServer) SignIn(context.Context, *SignInData) (*UserData, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SignIn not implemented")
+}
+func (UnimplementedMessengerServiceServer) SignUp(context.Context, *SignUpData) (*UserData, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SignUp not implemented")
 }
-func (UnimplementedMessengerServiceServer) SignIn(context.Context, *SignInData) (*User, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SignIn not implemented")
+func (UnimplementedMessengerServiceServer) CheckName(context.Context, *CheckNameMessage) (*CheckNameAck, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckName not implemented")
+}
+func (UnimplementedMessengerServiceServer) CheckLogin(context.Context, *CheckLoginMessage) (*CheckLoginAck, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckLogin not implemented")
 }
 func (UnimplementedMessengerServiceServer) SendMessage(MessengerService_SendMessageServer) error {
 	return status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
 }
-func (UnimplementedMessengerServiceServer) ReceiveMessage(*User, MessengerService_ReceiveMessageServer) error {
+func (UnimplementedMessengerServiceServer) ReceiveMessage(*UserData, MessengerService_ReceiveMessageServer) error {
 	return status.Errorf(codes.Unimplemented, "method ReceiveMessage not implemented")
 }
 func (UnimplementedMessengerServiceServer) mustEmbedUnimplementedMessengerServiceServer() {}
@@ -158,6 +186,24 @@ type UnsafeMessengerServiceServer interface {
 
 func RegisterMessengerServiceServer(s grpc.ServiceRegistrar, srv MessengerServiceServer) {
 	s.RegisterService(&MessengerService_ServiceDesc, srv)
+}
+
+func _MessengerService_SignIn_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SignInData)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessengerServiceServer).SignIn(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/messengerpb.MessengerService/SignIn",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessengerServiceServer).SignIn(ctx, req.(*SignInData))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _MessengerService_SignUp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -178,20 +224,38 @@ func _MessengerService_SignUp_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MessengerService_SignIn_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SignInData)
+func _MessengerService_CheckName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckNameMessage)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MessengerServiceServer).SignIn(ctx, in)
+		return srv.(MessengerServiceServer).CheckName(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/messengerpb.MessengerService/SignIn",
+		FullMethod: "/messengerpb.MessengerService/CheckName",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MessengerServiceServer).SignIn(ctx, req.(*SignInData))
+		return srv.(MessengerServiceServer).CheckName(ctx, req.(*CheckNameMessage))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessengerService_CheckLogin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckLoginMessage)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessengerServiceServer).CheckLogin(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/messengerpb.MessengerService/CheckLogin",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessengerServiceServer).CheckLogin(ctx, req.(*CheckLoginMessage))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -223,7 +287,7 @@ func (x *messengerServiceSendMessageServer) Recv() (*Message, error) {
 }
 
 func _MessengerService_ReceiveMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(User)
+	m := new(UserData)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -251,12 +315,20 @@ var MessengerService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*MessengerServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "SignIn",
+			Handler:    _MessengerService_SignIn_Handler,
+		},
+		{
 			MethodName: "SignUp",
 			Handler:    _MessengerService_SignUp_Handler,
 		},
 		{
-			MethodName: "SignIn",
-			Handler:    _MessengerService_SignIn_Handler,
+			MethodName: "CheckName",
+			Handler:    _MessengerService_CheckName_Handler,
+		},
+		{
+			MethodName: "CheckLogin",
+			Handler:    _MessengerService_CheckLogin_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
