@@ -1,5 +1,4 @@
 @echo off
-cd c:/go/messenger
 protoc messengerpb/messenger.proto --go_out=. --go-grpc_out=.
 go build server/server.go
 go build client/client.go
