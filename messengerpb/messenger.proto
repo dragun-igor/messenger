@@ -7,63 +7,61 @@ package messengerpb;
 import "google/protobuf/timestamp.proto";
 
 service MessengerService {
-    rpc SignIn(SignInData) returns (UserData) {}
-    rpc SignUp(SignUpData) returns (UserData) {}
-    rpc CheckName(CheckNameMessage) returns (CheckNameAck) {}
-    rpc CheckLogin(CheckLoginMessage) returns (CheckLoginAck) {}
-    rpc RequestAddToFriendsList(RequestAddToFriendsListMessage) returns (RequestAddToFriendsListAck) {}
-    rpc ListenAddToFriendsList(UserData) returns (stream UserData) {}
+    rpc LogIn(LogInData) returns (User) {}
+    rpc SignUp(SignUpData) returns (User) {}
+    rpc CheckName(CheckNameMessage) returns (MessageAck) {}
+    rpc CheckLogin(CheckLoginMessage) returns (MessageAck) {}
+    rpc RequestAddToFriendsList(UsersPair) returns (MessageAck) {}
+    rpc ListenAddToFriendsList(User) returns (stream User) {}
+    rpc ListenAppendNewFriend(User) returns (stream User) {}
+    rpc AddToFriendsList(UsersPair) returns (MessageAck) {}
+    rpc GetFriendsList(User) returns (FriendsList) {}
     rpc SendMessage(stream Message) returns (MessageAck) {}
-    rpc ReceiveMessage(UserData) returns (stream Message) {}
+    rpc GetMessages(UsersPair) returns (MessageArchive) {}
+    rpc ReceiveMessage(User) returns (stream Message) {}
 }
 
-message RequestAddToFriendsListMessage {
-    UserData requester = 1;
-    UserData receiver = 2;
+message User {
+    string name = 1;
 }
 
-message RequestAddToFriendsListAck {
-    string status = 1;
+message UsersPair {
+    string requester = 1;
+    string receiver = 2;
+}
+
+message Message {
+    google.protobuf.Timestamp time = 1;
+    string sender = 2;
+    string receiver = 3;
+    string message = 4;
+}
+
+message LogInData {
+    string login = 1;
+    string password = 2;
+}
+message SignUpData {
+    LogInData signInData = 1;
+    string name = 2;
+}
+
+message FriendsList {
+    repeated string friends = 1;
 }
 
 message CheckNameMessage {
     string name = 1;
 }
 
-message CheckNameAck {
-    bool busy = 1;
-}
-
 message CheckLoginMessage {
     string login = 1;
 }
 
-message CheckLoginAck {
-    bool busy = 1;
-}
-
-message SignUpData {
-    SignInData signInData = 1;
-    UserData userData = 2;
-}
-
-message SignInData {
-    string login = 1;
-    string password = 2;
-}
-
-message UserData {
-    int64 id = 1;
-    string name = 2;
-}
-
-message Message {
-    google.protobuf.Timestamp time = 1;
-    UserData sender = 2;
-    UserData receiver = 3;
-    string message = 4;
-}
-
 message MessageAck {
     string status = 1;
+}
+
+message MessageArchive {
+    repeated Message messages = 1;
 }

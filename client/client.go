@@ -23,8 +23,9 @@ const (
 var tcpServer = flag.String("server", ":5400", "Tcp server")
 
 var (
-	receiver   string = "Ira"
-	myUserData *messengerpb.UserData
+	receiver   string
+	friends    []string
+	myUserData *messengerpb.User
 )
 
 func signUpName(ctx context.Context, client messengerpb.MessengerServiceClient, scanner *bufio.Scanner) string {
@@ -38,10 +39,9 @@ func signUpName(ctx context.Context, client messengerpb.MessengerServiceClient, 
 		if ack, err := client.CheckName(ctx, &messengerpb.CheckNameMessage{Name: name}); err != nil {
 			fmt.Printf("err: %v \n", err)
 		} else {
-			if !ack.Busy {
+			fmt.Println(ack.Status)
+			if ack.Status == "ok" {
 				return name
-			} else {
-				fmt.Println("Name is busy")
 			}
 		}
 	}
@@ -59,10 +59,9 @@ func signUpLogin(ctx context.Context, client messengerpb.MessengerServiceClient,
 		if ack, err := client.CheckLogin(ctx, &messengerpb.CheckLoginMessage{Login: login}); err != nil {
 			fmt.Printf("err: %v \n", err)
 		} else {
-			if !ack.Busy {
+			fmt.Println(ack.Status)
+			if ack.Status == "ok" {
 				return login
-			} else {
-				fmt.Println("Login is busy")
 			}
 		}
 	}
@@ -95,16 +94,14 @@ func signUpPassword(scanner *bufio.Scanner) string {
 	return password
 }
 
-func signUp(ctx context.Context, client messengerpb.MessengerServiceClient, scanner *bufio.Scanner) *messengerpb.UserData {
+func signUp(ctx context.Context, client messengerpb.MessengerServiceClient, scanner *bufio.Scanner) *messengerpb.User {
 	for {
 		signUpData := &messengerpb.SignUpData{
-			SignInData: &messengerpb.SignInData{
+			SignInData: &messengerpb.LogInData{
 				Login:    signUpLogin(ctx, client, scanner),
 				Password: signUpPassword(scanner),
 			},
-			UserData: &messengerpb.UserData{
-				Name: signUpName(ctx, client, scanner),
-			},
+			Name: signUpName(ctx, client, scanner),
 		}
 		if u, err := client.SignUp(ctx, signUpData); err != nil {
 			fmt.Printf("err: %v \n", err)
@@ -114,10 +111,10 @@ func signUp(ctx context.Context, client messengerpb.MessengerServiceClient, scan
 	}
 }
 
-func signIn(ctx context.Context, client messengerpb.MessengerServiceClient, scanner *bufio.Scanner) *messengerpb.UserData {
-	var userData *messengerpb.UserData
-	signInData := &messengerpb.SignInData{}
-	for userData == nil {
+func logIn(ctx context.Context, client messengerpb.MessengerServiceClient, scanner *bufio.Scanner) *messengerpb.User {
+	var user *messengerpb.User
+	signInData := &messengerpb.LogInData{}
+	for user == nil {
 		fmt.Print("Login: ")
 		if scanner.Scan() {
 			signInData.Login = scanner.Text()
@@ -126,13 +123,13 @@ func signIn(ctx context.Context, client messengerpb.MessengerServiceClient, scan
 		if scanner.Scan() {
 			signInData.Password = scanner.Text()
 		}
-		if u, err := client.SignIn(ctx, signInData); err != nil {
+		if u, err := client.LogIn(ctx, signInData); err != nil {
 			fmt.Printf("err: %v \nWrong login or password\nTry again\n", err)
 		} else {
-			userData = u
+			user = u
 		}
 	}
-	return userData
+	return user
 }
 
 func receiveMessage(ctx context.Context, client messengerpb.MessengerServiceClient) {
@@ -142,20 +139,39 @@ func receiveMessage(ctx context.Context, client messengerpb.MessengerServiceClie
 	}
 	for {
 		in, err := stream.Recv()
-		if err != nil && err != io.EOF {
-			log.Fatalf("Failed to receive message from user. \nErr: %v \n", err)
+		if err != io.EOF {
+			if err != nil {
+				log.Fatalf("Failed to receive message from user. \nErr: %v \n", err)
+			}
+			fmt.Printf("%v: %v \n", in.Sender, in.Message)
 		}
-		fmt.Printf("%v: %v \n", in.Sender.Name, in.Message)
+	}
+}
+
+func getMessages(ctx context.Context, client messengerpb.MessengerServiceClient) {
+	archive, err := client.GetMessages(ctx, &messengerpb.UsersPair{
+		Requester: myUserData.Name,
+		Receiver:  receiver,
+	})
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		for _, msg := range archive.Messages {
+			fmt.Printf("%s %s -> %s: %s \n", msg.Time.AsTime().Format("02-01-2006 15:04:05"), msg.Sender, msg.Receiver, msg.Message)
+		}
 	}
 }
 
 func listenAddToFriendsList(ctx context.Context, client messengerpb.MessengerServiceClient) {
 	stream, err := client.ListenAddToFriendsList(ctx, myUserData)
 	if err != nil {
-		log.Fatalf("client.ListenAddToFriendsList(ctx, &userData) throws: %v \n", err)
+		log.Fatalf("client.ListenAddToFriendsList(ctx, &user) throws: %v \n", err)
 	}
 	for {
 		in, err := stream.Recv()
+		if err == io.EOF {
+			continue
+		}
 		if err != nil {
 			log.Fatalf("Failed to listen requests add to friends list. \nErr: %v \n", err)
 		}
@@ -163,42 +179,116 @@ func listenAddToFriendsList(ctx context.Context, client messengerpb.MessengerSer
 	}
 }
 
-func sendMessage(ctx context.Context, client messengerpb.MessengerServiceClient, message string, user *messengerpb.UserData) {
+func listenAppendNewFriend(ctx context.Context, client messengerpb.MessengerServiceClient) {
+	stream, err := client.ListenAppendNewFriend(ctx, myUserData)
+	if err != nil {
+		log.Fatalf("client.ListenAddToFriendsList(ctx, &user) throws: %v \n", err)
+	}
+	for {
+		in, err := stream.Recv()
+		if err == io.EOF {
+			continue
+		}
+		if err != nil {
+			log.Fatalf("Failed to listen append new friend. \nErr: %v \n", err)
+		}
+		fmt.Printf("User %s added you in friends list \n", in.Name)
+		getFriendsList(ctx, client)
+	}
+}
+
+func sendMessage(ctx context.Context, client messengerpb.MessengerServiceClient, message string) {
 	stream, err := client.SendMessage(ctx)
 	if err != nil {
 		log.Printf("Cannot send message: %v \n", err)
 	}
 	msg := &messengerpb.Message{
-		Sender:   user,
-		Receiver: &messengerpb.UserData{Name: receiver},
+		Sender:   myUserData.Name,
+		Receiver: receiver,
 		Message:  message,
 	}
 	stream.Send(msg)
-	ack, _ := stream.CloseAndRecv()
-	fmt.Printf("Message status: %v \n", ack)
+	ack, err := stream.CloseAndRecv()
+	if err != nil {
+		fmt.Printf("err: %v", err)
+	}
+	fmt.Println(ack.Status)
 }
 
 func requestAddToFriendsList(ctx context.Context, client messengerpb.MessengerServiceClient, name string) {
-	_, err := client.RequestAddToFriendsList(ctx, &messengerpb.RequestAddToFriendsListMessage{Requester: myUserData, Receiver: &messengerpb.UserData{Name: name}})
+	ack, err := client.RequestAddToFriendsList(ctx, &messengerpb.UsersPair{Requester: myUserData.Name, Receiver: name})
 	if err != nil {
 		fmt.Printf("err: %v \n", err)
 	} else {
-		fmt.Printf("Request sent")
+		fmt.Println(ack.Status)
 	}
 }
 
+func addToFriendsList(ctx context.Context, client messengerpb.MessengerServiceClient, name string) {
+	ack, err := client.AddToFriendsList(ctx, &messengerpb.UsersPair{
+		Requester: name,
+		Receiver:  myUserData.Name,
+	})
+	if err != nil {
+		fmt.Printf("err: %v", err)
+	} else {
+		fmt.Println(ack.Status)
+	}
+}
+
+func getFriendsList(ctx context.Context, client messengerpb.MessengerServiceClient) {
+	friendsList, err := client.GetFriendsList(ctx, myUserData)
+	if err != nil {
+		log.Println(err)
+	}
+	friends = friendsList.Friends
+}
+
 func command(ctx context.Context, client messengerpb.MessengerServiceClient, message string) {
-	switch {
-	case message == "помощь", message == "help":
+	str := strings.SplitN(message, " ", 2)
+	var command string
+	var arg string
+	if len(str) > 0 {
+		command = str[0]
+	}
+	if len(str) > 1 {
+		arg = str[1]
+	}
+LOOP:
+	switch command {
+	case "help", "помощь":
 		fmt.Println("HELP GUIDE.")
-		fmt.Println("-receiver or -получатель - changing message receiver")
+		fmt.Println("-select or -выбрать - changing message receiver")
 		fmt.Println("-archive or -архив - getting message archive (current receiver)")
-	case strings.SplitN(message, " ", 2)[0] == "receiver", strings.Split(message, " ")[0] == "получатель":
-		fmt.Printf("New reciver %s \n", strings.SplitN(message, " ", 2)[1])
-		receiver = strings.SplitN(message, " ", 2)[1]
-	case message == "friends", message == "друзья":
-	case strings.SplitN(message, " ", 2)[0] == "request":
-		requestAddToFriendsList(ctx, client, strings.SplitN(message, " ", 2)[1])
+		fmt.Println("-friends or -друзья - showing friends list")
+		fmt.Println("-accept or -принять - add to friends list")
+		fmt.Println("-request or -запросить - request add to friends list")
+	case "select", "выбрать":
+		for _, name := range friends {
+			if name == arg {
+				receiver = arg
+				fmt.Println("Selected user", receiver)
+				break LOOP
+			}
+		}
+		fmt.Printf("User %s not in your friends list \n", arg)
+	case "archive", "архив":
+		getMessages(ctx, client)
+	case "friends", "друзья":
+		if len(friends) == 0 {
+			fmt.Println("Your friends list is empty")
+			break
+		}
+		fmt.Println("\nYour friends list:")
+		for _, name := range friends {
+			fmt.Println(name)
+		}
+	case "accept", "принять":
+		addToFriendsList(ctx, client, arg)
+		getFriendsList(ctx, client)
+	case "request", "запросить":
+		requestAddToFriendsList(ctx, client, arg)
+	case "requests", "запросы":
 	default:
 		fmt.Println("Unknown command")
 	}
@@ -232,22 +322,30 @@ func main() {
 	}
 	switch sign {
 	case sIn:
-		myUserData = signIn(ctx, client, scanner)
+		myUserData = logIn(ctx, client, scanner)
 	case sUp:
 		myUserData = signUp(ctx, client, scanner)
 	}
 
 	fmt.Printf("Hello, %s!\n", myUserData.Name)
-
+	getFriendsList(ctx, client)
 	go receiveMessage(ctx, client)
 	go listenAddToFriendsList(ctx, client)
+	go listenAppendNewFriend(ctx, client)
 
 	for scanner.Scan() {
 		str := scanner.Text()
-		if str[0] == '-' {
+		switch {
+		case str == "":
+			continue
+		case str[0] == '-':
 			go command(ctx, client, str[1:])
-		} else {
-			go sendMessage(ctx, client, scanner.Text(), myUserData)
+		default:
+			if receiver != "" {
+				go sendMessage(ctx, client, scanner.Text())
+			} else {
+				fmt.Println("Select message receiver")
+			}
 		}
 	}
 }
