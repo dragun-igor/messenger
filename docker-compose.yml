@@ -1,0 +1,33 @@
+version: "3.7"
+
+services:
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: drag
+      POSTGRES_DB: messenger
+      POSTGRES_PASSWORD: terra5308
+    ports:
+      - 8080:5432
+  server:
+    image: server
+    restart: always
+    network_mode: host
+    environment:
+      DB_HOST: localhost
+      DB_PORT: 8080
+      DB_USER: drag
+      DB_NAME: messenger
+      DB_PASSWORD: terra5308
+    depends_on:
+      - db
+  client:
+    image: client
+    restart: always
+    network_mode: host
+    stdin_open: true
+    tty: true
+    depends_on:
+      - server
+

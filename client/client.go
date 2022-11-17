@@ -20,7 +20,7 @@ const (
 	sUp
 )
 
-var tcpServer = flag.String("server", ":5400", "Tcp server")
+var tcpServer = flag.String("server", "localhost:50051", "Tcp server")
 
 var (
 	receiver   string
@@ -42,7 +42,7 @@ func signUpName(ctx context.Context, client messengerpb.MessengerServiceClient, 
 			fmt.Printf("err: %v \n", err)
 		} else {
 			fmt.Println(ack.Status)
-			if ack.Status == "ok" {
+			if ack.Status == "Ok" {
 				return name
 			}
 		}
@@ -63,7 +63,7 @@ func signUpLogin(ctx context.Context, client messengerpb.MessengerServiceClient,
 			fmt.Printf("err: %v \n", err)
 		} else {
 			fmt.Println(ack.Status)
-			if ack.Status == "ok" {
+			if ack.Status == "Ok" {
 				return login
 			}
 		}

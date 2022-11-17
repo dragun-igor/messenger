@@ -191,7 +191,7 @@ func newServer() *messengerServiceServer {
 
 func main() {
 	fmt.Println("--- SERVER APP ---")
-	lis, err := net.Listen("tcp", ":5400")
+	lis, err := net.Listen("tcp", "localhost:50051")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v \n", err)
 	}
