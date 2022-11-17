@@ -166,6 +166,8 @@ func (s *messengerServiceServer) GetRequestsToFriendsList(ctx context.Context, u
 func newServer() *messengerServiceServer {
 	log.Println("connecting to database")
 	resources := resources.GetResources(context.Background(), config.New())
+	log.Println("processing migration")
+	resources.MigrationUp(context.Background())
 	log.Println("getting users list")
 	users, err := resources.GetAllUsers(context.Background())
 	if err != nil {

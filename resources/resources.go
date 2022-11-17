@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"log"
+	"os"
 	"time"
 
 	"github.com/dragun-igor/messenger/config"
@@ -27,7 +29,6 @@ type Resources struct {
 }
 
 func connectDB(ctx context.Context, config *config.Config) *sql.DB {
-	fmt.Println(*config)
 	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		config.DBHost,
 		config.DBPort,
@@ -278,6 +279,23 @@ func (r *Resources) GetMessages(ctx context.Context, usersPair *messengerpb.User
 		messages = append(messages, message)
 	}
 	return &messengerpb.MessageArchive{Messages: messages}, nil
+}
+
+func (r *Resources) MigrationUp(ctx context.Context) {
+	file, err := os.Open("migrations/createtables.up.sql")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	b, err := io.ReadAll(file)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	query := string(b)
+	_, err = r.DB.ExecContext(ctx, query)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println("migration is succesfully completed")
 }
 
 func (r *Resources) SendMessage(ctx context.Context, msg *messengerpb.Message) error {
