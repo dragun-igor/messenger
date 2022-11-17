@@ -11,7 +11,9 @@ services:
     ports:
       - 8080:5432
   server:
-    image: server
+    build:
+      context: .
+      dockerfile: server/Dockerfile
     restart: always
     network_mode: host
     environment:
@@ -22,12 +24,14 @@ services:
       DB_PASSWORD: terra5308
     depends_on:
       - db
-  client:
-    image: client
-    restart: always
-    network_mode: host
-    stdin_open: true
-    tty: true
-    depends_on:
-      - server
+  # client:
+  #   build:
+  #     context: .
+  #     dockerfile: client/Dockerfile
+  #   restart: always
+  #   network_mode: host
+  #   stdin_open: true
+  #   tty: true
+  #   depends_on:
+  #     - server
 
