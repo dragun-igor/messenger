@@ -25,9 +25,11 @@ var tcpServer = flag.String("server", ":5400", "Tcp server")
 var (
 	receiver   string
 	friends    []string
+	requests   []string
 	myUserData *messengerpb.User
 )
 
+// Ввод и проверка уникальности имени
 func signUpName(ctx context.Context, client messengerpb.MessengerServiceClient, scanner *bufio.Scanner) string {
 	fmt.Print("Your Name: ")
 	for scanner.Scan() {
@@ -48,6 +50,7 @@ func signUpName(ctx context.Context, client messengerpb.MessengerServiceClient, 
 	return ""
 }
 
+// Ввод и проверка уникальности логина
 func signUpLogin(ctx context.Context, client messengerpb.MessengerServiceClient, scanner *bufio.Scanner) string {
 	fmt.Print("Your login: ")
 	for scanner.Scan() {
@@ -68,6 +71,7 @@ func signUpLogin(ctx context.Context, client messengerpb.MessengerServiceClient,
 	return ""
 }
 
+// Ввод и проверка пароля
 func signUpPassword(scanner *bufio.Scanner) string {
 	var password string
 	for {
@@ -94,6 +98,7 @@ func signUpPassword(scanner *bufio.Scanner) string {
 	return password
 }
 
+// Регистрация
 func signUp(ctx context.Context, client messengerpb.MessengerServiceClient, scanner *bufio.Scanner) *messengerpb.User {
 	for {
 		signUpData := &messengerpb.SignUpData{
@@ -111,6 +116,7 @@ func signUp(ctx context.Context, client messengerpb.MessengerServiceClient, scan
 	}
 }
 
+// Авторизация
 func logIn(ctx context.Context, client messengerpb.MessengerServiceClient, scanner *bufio.Scanner) *messengerpb.User {
 	var user *messengerpb.User
 	signInData := &messengerpb.LogInData{}
@@ -132,6 +138,7 @@ func logIn(ctx context.Context, client messengerpb.MessengerServiceClient, scann
 	return user
 }
 
+// Получение сообщений
 func receiveMessage(ctx context.Context, client messengerpb.MessengerServiceClient) {
 	stream, err := client.ReceiveMessage(ctx, myUserData)
 	if err != nil {
@@ -148,6 +155,7 @@ func receiveMessage(ctx context.Context, client messengerpb.MessengerServiceClie
 	}
 }
 
+// Получение архива сообщений с выбранным пользователем
 func getMessages(ctx context.Context, client messengerpb.MessengerServiceClient) {
 	archive, err := client.GetMessages(ctx, &messengerpb.UsersPair{
 		Requester: myUserData.Name,
@@ -162,6 +170,7 @@ func getMessages(ctx context.Context, client messengerpb.MessengerServiceClient)
 	}
 }
 
+// Получение запросов на добавление в друзья
 func listenAddToFriendsList(ctx context.Context, client messengerpb.MessengerServiceClient) {
 	stream, err := client.ListenAddToFriendsList(ctx, myUserData)
 	if err != nil {
@@ -179,6 +188,7 @@ func listenAddToFriendsList(ctx context.Context, client messengerpb.MessengerSer
 	}
 }
 
+// Получение подтверждения на запрос
 func listenAppendNewFriend(ctx context.Context, client messengerpb.MessengerServiceClient) {
 	stream, err := client.ListenAppendNewFriend(ctx, myUserData)
 	if err != nil {
@@ -197,6 +207,7 @@ func listenAppendNewFriend(ctx context.Context, client messengerpb.MessengerServ
 	}
 }
 
+// Отправление сообщения
 func sendMessage(ctx context.Context, client messengerpb.MessengerServiceClient, message string) {
 	stream, err := client.SendMessage(ctx)
 	if err != nil {
@@ -215,6 +226,7 @@ func sendMessage(ctx context.Context, client messengerpb.MessengerServiceClient,
 	fmt.Println(ack.Status)
 }
 
+// Отправка запроса на добавление в друзья
 func requestAddToFriendsList(ctx context.Context, client messengerpb.MessengerServiceClient, name string) {
 	ack, err := client.RequestAddToFriendsList(ctx, &messengerpb.UsersPair{Requester: myUserData.Name, Receiver: name})
 	if err != nil {
@@ -224,6 +236,7 @@ func requestAddToFriendsList(ctx context.Context, client messengerpb.MessengerSe
 	}
 }
 
+// Добавление в друзья
 func addToFriendsList(ctx context.Context, client messengerpb.MessengerServiceClient, name string) {
 	ack, err := client.AddToFriendsList(ctx, &messengerpb.UsersPair{
 		Requester: name,
@@ -236,6 +249,7 @@ func addToFriendsList(ctx context.Context, client messengerpb.MessengerServiceCl
 	}
 }
 
+// Получение списка друзей
 func getFriendsList(ctx context.Context, client messengerpb.MessengerServiceClient) {
 	friendsList, err := client.GetFriendsList(ctx, myUserData)
 	if err != nil {
@@ -244,6 +258,16 @@ func getFriendsList(ctx context.Context, client messengerpb.MessengerServiceClie
 	friends = friendsList.Friends
 }
 
+// Получение списка запросов на добавление в друзья
+func getRequestsToFriendsList(ctx context.Context, client messengerpb.MessengerServiceClient) {
+	requestsList, err := client.GetRequestsToFriendsList(ctx, myUserData)
+	if err != nil {
+		log.Println(err)
+	}
+	requests = requestsList.Requests
+}
+
+// Команды пользователя
 func command(ctx context.Context, client messengerpb.MessengerServiceClient, message string) {
 	str := strings.SplitN(message, " ", 2)
 	var command string
@@ -262,7 +286,8 @@ LOOP:
 		fmt.Println("-archive or -архив - getting message archive (current receiver)")
 		fmt.Println("-friends or -друзья - showing friends list")
 		fmt.Println("-accept or -принять - add to friends list")
-		fmt.Println("-request or -запросить - request add to friends list")
+		fmt.Println("-request_to or -запросить - request add to friends list")
+		fmt.Println("-requests or -запросы - get requests list")
 	case "select", "выбрать":
 		for _, name := range friends {
 			if name == arg {
@@ -286,9 +311,18 @@ LOOP:
 	case "accept", "принять":
 		addToFriendsList(ctx, client, arg)
 		getFriendsList(ctx, client)
-	case "request", "запросить":
+	case "request_to", "запросить":
 		requestAddToFriendsList(ctx, client, arg)
 	case "requests", "запросы":
+		getRequestsToFriendsList(ctx, client)
+		if len(requests) == 0 {
+			fmt.Println("Your requests list is empty")
+			break
+		}
+		fmt.Println("\nYour requests list:")
+		for _, name := range requests {
+			fmt.Println(name)
+		}
 	default:
 		fmt.Println("Unknown command")
 	}

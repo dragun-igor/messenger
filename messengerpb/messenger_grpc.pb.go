@@ -33,6 +33,7 @@ type MessengerServiceClient interface {
 	GetFriendsList(ctx context.Context, in *User, opts ...grpc.CallOption) (*FriendsList, error)
 	SendMessage(ctx context.Context, opts ...grpc.CallOption) (MessengerService_SendMessageClient, error)
 	GetMessages(ctx context.Context, in *UsersPair, opts ...grpc.CallOption) (*MessageArchive, error)
+	GetRequestsToFriendsList(ctx context.Context, in *User, opts ...grpc.CallOption) (*Requests, error)
 	ReceiveMessage(ctx context.Context, in *User, opts ...grpc.CallOption) (MessengerService_ReceiveMessageClient, error)
 }
 
@@ -214,6 +215,15 @@ func (c *messengerServiceClient) GetMessages(ctx context.Context, in *UsersPair,
 	return out, nil
 }
 
+func (c *messengerServiceClient) GetRequestsToFriendsList(ctx context.Context, in *User, opts ...grpc.CallOption) (*Requests, error) {
+	out := new(Requests)
+	err := c.cc.Invoke(ctx, "/messengerpb.MessengerService/GetRequestsToFriendsList", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *messengerServiceClient) ReceiveMessage(ctx context.Context, in *User, opts ...grpc.CallOption) (MessengerService_ReceiveMessageClient, error) {
 	stream, err := c.cc.NewStream(ctx, &MessengerService_ServiceDesc.Streams[3], "/messengerpb.MessengerService/ReceiveMessage", opts...)
 	if err != nil {
@@ -261,6 +271,7 @@ type MessengerServiceServer interface {
 	GetFriendsList(context.Context, *User) (*FriendsList, error)
 	SendMessage(MessengerService_SendMessageServer) error
 	GetMessages(context.Context, *UsersPair) (*MessageArchive, error)
+	GetRequestsToFriendsList(context.Context, *User) (*Requests, error)
 	ReceiveMessage(*User, MessengerService_ReceiveMessageServer) error
 	mustEmbedUnimplementedMessengerServiceServer()
 }
@@ -301,6 +312,9 @@ func (UnimplementedMessengerServiceServer) SendMessage(MessengerService_SendMess
 }
 func (UnimplementedMessengerServiceServer) GetMessages(context.Context, *UsersPair) (*MessageArchive, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetMessages not implemented")
+}
+func (UnimplementedMessengerServiceServer) GetRequestsToFriendsList(context.Context, *User) (*Requests, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRequestsToFriendsList not implemented")
 }
 func (UnimplementedMessengerServiceServer) ReceiveMessage(*User, MessengerService_ReceiveMessageServer) error {
 	return status.Errorf(codes.Unimplemented, "method ReceiveMessage not implemented")
@@ -530,6 +544,24 @@ func _MessengerService_GetMessages_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessengerService_GetRequestsToFriendsList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(User)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessengerServiceServer).GetRequestsToFriendsList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/messengerpb.MessengerService/GetRequestsToFriendsList",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessengerServiceServer).GetRequestsToFriendsList(ctx, req.(*User))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MessengerService_ReceiveMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(User)
 	if err := stream.RecvMsg(m); err != nil {
@@ -589,6 +621,10 @@ var MessengerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMessages",
 			Handler:    _MessengerService_GetMessages_Handler,
+		},
+		{
+			MethodName: "GetRequestsToFriendsList",
+			Handler:    _MessengerService_GetRequestsToFriendsList_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

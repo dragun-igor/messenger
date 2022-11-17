@@ -18,6 +18,7 @@ service MessengerService {
     rpc GetFriendsList(User) returns (FriendsList) {}
     rpc SendMessage(stream Message) returns (MessageAck) {}
     rpc GetMessages(UsersPair) returns (MessageArchive) {}
+    rpc GetRequestsToFriendsList(User) returns (Requests) {}
     rpc ReceiveMessage(User) returns (stream Message) {}
 }
 
@@ -48,6 +49,10 @@ message SignUpData {
 
 message FriendsList {
     repeated string friends = 1;
+}
+
+message Requests {
+    repeated string requests = 1;
 }
 
 message CheckNameMessage {

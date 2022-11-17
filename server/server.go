@@ -155,6 +155,14 @@ func (s *messengerServiceServer) GetFriendsList(ctx context.Context, user *messe
 	return friends, nil
 }
 
+func (s *messengerServiceServer) GetRequestsToFriendsList(ctx context.Context, user *messengerpb.User) (*messengerpb.Requests, error) {
+	requests, err := s.resources.GetRequestsToFriendsList(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	return requests, nil
+}
+
 func newServer() *messengerServiceServer {
 	log.Println("connecting to database")
 	resources := resources.GetResources(context.Background(), config.New())

@@ -14,6 +14,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// Названия таблиц
 const (
 	usersTableName            = "users"
 	messagesTableName         = "messages"
@@ -220,6 +221,30 @@ func (r *Resources) GetFriendsList(ctx context.Context, user *messengerpb.User) 
 		friends = append(friends, name)
 	}
 	return &messengerpb.FriendsList{Friends: friends}, nil
+}
+
+func (r *Resources) GetRequestsToFriendsList(ctx context.Context, user *messengerpb.User) (*messengerpb.Requests, error) {
+	query := fmt.Sprintf("SELECT COUNT(requester) FROM %s WHERE receiver = $1;", requestToFriendsTableName)
+	row := r.DB.QueryRowContext(ctx, query, user.Name)
+	var number int
+	if err := row.Scan(&number); err != nil {
+		return nil, err
+	}
+	if number == 0 {
+		return &messengerpb.Requests{}, nil
+	}
+	requests := make([]string, 0, number)
+	query = fmt.Sprintf("SELECT requester FROM %s WHERE receiver = $1;", requestToFriendsTableName)
+	rows, err := r.DB.QueryContext(ctx, query, user.Name)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var name string
+		rows.Scan(&name)
+		requests = append(requests, name)
+	}
+	return &messengerpb.Requests{Requests: requests}, nil
 }
 
 func (r *Resources) GetMessages(ctx context.Context, usersPair *messengerpb.UsersPair) (*messengerpb.MessageArchive, error) {
