@@ -1,4 +1,2 @@
-DROP TABLE IF EXISTS requests_to_friends_list;
-DROP TABLE IF EXISTS friends;
 DROP TABLE IF EXISTS messages;
 DROP TABLE IF EXISTS users;

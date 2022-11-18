@@ -1,7 +1,4 @@
 @echo off
-protoc messengerpb/messenger.proto --go_out=. --go-grpc_out=.
-go build server/server.go
-go build client/client.go
-start "Server" "server.exe"
-start "Client" "client.exe"
-start "Client" "client.exe"
+start "Server" go run cmd/server/main.go
+start "Client Igor" go run cmd/client/main.go -name Igor
+start "Client Ira" go run cmd/client/main.go -name Ira
