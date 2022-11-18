@@ -24,5 +24,5 @@ func (u *User) SetHashByPassword(password string) error {
 }
 
 func (u *User) IsPasswordCorrect(password string) bool {
-	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password)) == nil
+	return bcrypt.CompareHashAndPassword([]byte(password), []byte(u.Password)) == nil
 }

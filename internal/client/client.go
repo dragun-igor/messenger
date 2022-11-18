@@ -37,6 +37,21 @@ func (c *Client) Serve() error {
 	defer conn.Close()
 	ctx := context.Background()
 	c.client = messenger.NewMessengerServiceClient(conn)
+	scanner := bufio.NewScanner(os.Stdin)
+	fmt.Println("Are you already have a account?")
+	if scanner.Scan() {
+		text := strings.ToLower(scanner.Text())
+		if text == "n" || text == "no" {
+			if err := c.signUp(ctx, scanner); err != nil {
+				return err
+			}
+		}
+		if text == "y" || text == "yes" {
+			if err := c.logIn(ctx, scanner); err != nil {
+				return err
+			}
+		}
+	}
 	if err := c.ping(ctx); err != nil {
 		return err
 	}
@@ -114,5 +129,65 @@ func (c *Client) ping(ctx context.Context) error {
 		return err
 	}
 	go c.receiveMessage(ctx)
+	return nil
+}
+
+func (c *Client) signUp(ctx context.Context, scanner *bufio.Scanner) error {
+BEGIN:
+	var login string
+	var name string
+	var password string
+	fmt.Print("Login: ")
+	if scanner.Scan() {
+		login = scanner.Text()
+	}
+	fmt.Print("Name: ")
+	if scanner.Scan() {
+		name = scanner.Text()
+	}
+	for {
+		fmt.Print("Password: ")
+		if scanner.Scan() {
+			password = scanner.Text()
+		}
+		fmt.Print("Password: ")
+		if scanner.Scan() {
+			if password == scanner.Text() {
+				break
+			}
+		}
+		fmt.Println("Passwords are not matched")
+	}
+	_, err := c.client.SignUp(ctx, &messenger.SignUpRequest{
+		Login:    login,
+		Name:     name,
+		Password: password,
+	})
+	if err != nil {
+		fmt.Println(err)
+		goto BEGIN
+	}
+	return nil
+}
+
+func (c *Client) logIn(ctx context.Context, scanner *bufio.Scanner) error {
+	var login string
+	var password string
+	fmt.Print("Login: ")
+	if scanner.Scan() {
+		login = scanner.Text()
+	}
+	fmt.Print("Password: ")
+	if scanner.Scan() {
+		password = scanner.Text()
+	}
+	user, err := c.client.LogIn(ctx, &messenger.LogInRequest{
+		Login:    login,
+		Password: password,
+	})
+	if err != nil {
+		return err
+	}
+	c.name = user.Name
 	return nil
 }

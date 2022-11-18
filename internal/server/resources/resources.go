@@ -9,6 +9,7 @@ import (
 
 	"github.com/dragun-igor/messenger/config"
 	"github.com/dragun-igor/messenger/internal/server/model"
+	"github.com/dragun-igor/messenger/pkg/errors"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -81,7 +82,7 @@ func (r *Resources) CheckLoginExists(ctx context.Context, user model.User) (bool
 	query := fmt.Sprintf("SELECT EXISTS(SELECT * FROM %s WHERE login = $1)", usersTable)
 	row := r.DB.QueryRow(ctx, query, user.Login)
 	err := row.Scan(&ok)
-	return ok, err
+	return !ok, err
 }
 
 func (r *Resources) CheckNameExists(ctx context.Context, user model.User) (bool, error) {
@@ -89,17 +90,20 @@ func (r *Resources) CheckNameExists(ctx context.Context, user model.User) (bool,
 	query := fmt.Sprintf("SELECT EXISTS(SELECT * FROM %s WHERE name = $1)", usersTable)
 	row := r.DB.QueryRow(ctx, query, user.Name)
 	err := row.Scan(&ok)
-	return ok, err
+	return !ok, err
 }
 
-func (r *Resources) IsPasswordCorrect(ctx context.Context, user model.User) (bool, error) {
+func (r *Resources) LogIn(ctx context.Context, user model.User) (string, error) {
+	var name string
 	var password string
-	query := fmt.Sprintf("SELECT password FROM %s WHERE login = $1", usersTable)
+	query := fmt.Sprintf("SELECT name, password FROM %s WHERE login = $1", usersTable)
 	row := r.DB.QueryRow(ctx, query, user.Login)
-	err := row.Scan(&password)
+	err := row.Scan(&name, &password)
 	if err != nil {
-		return false, err
+		return "", err
 	}
-	ok := user.IsPasswordCorrect(password)
-	return ok, nil
+	if !user.IsPasswordCorrect(password) {
+		return "", errors.ErrIncorrectPassword
+	}
+	return name, nil
 }

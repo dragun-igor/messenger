@@ -6,6 +6,7 @@ import (
 	"github.com/dragun-igor/messenger/config"
 	"github.com/dragun-igor/messenger/internal/server/model"
 	"github.com/dragun-igor/messenger/internal/server/resources"
+	"github.com/dragun-igor/messenger/pkg/errors"
 	"github.com/dragun-igor/messenger/proto/messenger"
 	"golang.org/x/net/context"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -68,4 +69,43 @@ func (s *MessengerServiceServer) Ping(stream messenger.MessengerService_PingServ
 	delete(s.clients, user.Name)
 	log.Printf("user %s is offline", user.Name)
 	return nil
+}
+
+func (s *MessengerServiceServer) SignUp(ctx context.Context, signUpRequest *messenger.SignUpRequest) (*emptypb.Empty, error) {
+	user := model.User{
+		Login: signUpRequest.Login,
+		Name:  signUpRequest.Name,
+	}
+	user.SetHashByPassword(signUpRequest.Password)
+	ok, err := s.resources.CheckLoginExists(ctx, user)
+	if err != nil {
+		return nil, convert(err)
+	}
+	if !ok {
+		return nil, convert(errors.ErrLoginNameIsBusy)
+	}
+	ok, err = s.resources.CheckNameExists(ctx, user)
+	if err != nil {
+		return nil, convert(err)
+	}
+	if !ok {
+		return nil, convert(errors.ErrUserNameIsBusy)
+	}
+	err = s.resources.InsertUser(ctx, user)
+	if err != nil {
+		return nil, convert(err)
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (s *MessengerServiceServer) LogIn(ctx context.Context, logInRequest *messenger.LogInRequest) (*messenger.User, error) {
+	user := model.User{
+		Login:    logInRequest.Login,
+		Password: logInRequest.Password,
+	}
+	name, err := s.resources.LogIn(ctx, user)
+	if err != nil {
+		return nil, convert(err)
+	}
+	return &messenger.User{Name: name}, nil
 }
