@@ -20,10 +20,10 @@ type Client struct {
 	name   string
 }
 
-func NewClient(server, name string) *Client {
+func NewClient() *Client {
+	server := "localhost:50051"
 	return &Client{
 		server: server,
-		name:   name,
 	}
 }
 
@@ -41,16 +41,14 @@ func (c *Client) Serve() error {
 	fmt.Println("Are you already have a account?")
 	if scanner.Scan() {
 		text := strings.ToLower(scanner.Text())
-		if text == "n" || text == "no" {
+		if text == "n" || text == "no" || text == "н" || text == "нет" {
 			if err := c.signUp(ctx, scanner); err != nil {
 				return err
 			}
 		}
-		if text == "y" || text == "yes" {
-			if err := c.logIn(ctx, scanner); err != nil {
-				return err
-			}
-		}
+	}
+	if err := c.logIn(ctx, scanner); err != nil {
+		return err
 	}
 	if err := c.ping(ctx); err != nil {
 		return err

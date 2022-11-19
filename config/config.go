@@ -3,7 +3,7 @@ package config
 import "os"
 
 const (
-	defaultGRPCHost string = "localhost"
+	defaultGRPCHost string = ""
 	defaultGRPCPort string = "50051"
 	defaultDBHost   string = "localhost"
 	defaultDBPort   string = "5432"
