@@ -14,19 +14,15 @@ import (
 
 type MessengerServiceServer struct {
 	messenger.UnimplementedMessengerServiceServer
-	clients   map[string]chan *messenger.Message
-	resources *resources.Resources
+	clients map[string]chan *messenger.Message
+	db      resources.PostgresDB
 }
 
-func NewMessengerServiceServer(ctx context.Context, config *config.Config) (*MessengerServiceServer, error) {
-	resources, err := resources.NewResources(ctx, "migrations/createtables.up.sql", config)
-	if err != nil {
-		return nil, err
-	}
+func NewMessengerServiceServer(ctx context.Context, config *config.Config, db resources.PostgresDB) *MessengerServiceServer {
 	return &MessengerServiceServer{
-		resources: resources,
-		clients:   make(map[string]chan *messenger.Message),
-	}, nil
+		db:      db,
+		clients: make(map[string]chan *messenger.Message),
+	}
 }
 
 func (s *MessengerServiceServer) SendMessage(ctx context.Context, message *messenger.Message) (*messenger.MessageResponse, error) {
@@ -38,7 +34,9 @@ func (s *MessengerServiceServer) SendMessage(ctx context.Context, message *messe
 		Receiver: message.Receiver,
 		Message:  message.Message,
 	}
-	s.resources.InsertMessage(ctx, msg)
+	if err := s.db.InsertMessage(ctx, msg); err != nil {
+		return nil, convert(err)
+	}
 	s.clients[message.Receiver] <- message
 	log.Printf("%s -> %s: %s", message.Sender, message.Receiver, message.Message)
 	return &messenger.MessageResponse{Sent: true}, nil
@@ -58,12 +56,12 @@ func (s *MessengerServiceServer) ReceiveMessage(user *messenger.User, stream mes
 func (s *MessengerServiceServer) Ping(stream messenger.MessengerService_PingServer) error {
 	user, err := stream.Recv()
 	if err != nil {
-		return err
+		return convert(err)
 	}
 	log.Printf("user %s is online", user.Name)
 	s.clients[user.Name] = make(chan *messenger.Message)
 	if err := stream.Send(&emptypb.Empty{}); err != nil {
-		return err
+		return convert(err)
 	}
 	<-stream.Context().Done()
 	delete(s.clients, user.Name)
@@ -76,22 +74,24 @@ func (s *MessengerServiceServer) SignUp(ctx context.Context, signUpRequest *mess
 		Login: signUpRequest.Login,
 		Name:  signUpRequest.Name,
 	}
-	user.SetHashByPassword(signUpRequest.Password)
-	ok, err := s.resources.CheckLoginExists(ctx, user)
+	if err := user.SetHashByPassword(signUpRequest.Password); err != nil {
+		return nil, convert(err)
+	}
+	ok, err := s.db.CheckLoginExists(ctx, user)
 	if err != nil {
 		return nil, convert(err)
 	}
 	if !ok {
 		return nil, convert(errors.ErrLoginNameIsBusy)
 	}
-	ok, err = s.resources.CheckNameExists(ctx, user)
+	ok, err = s.db.CheckNameExists(ctx, user)
 	if err != nil {
 		return nil, convert(err)
 	}
 	if !ok {
 		return nil, convert(errors.ErrUserNameIsBusy)
 	}
-	err = s.resources.InsertUser(ctx, user)
+	err = s.db.CreateUser(ctx, user)
 	if err != nil {
 		return nil, convert(err)
 	}
@@ -103,9 +103,12 @@ func (s *MessengerServiceServer) LogIn(ctx context.Context, logInRequest *messen
 		Login:    logInRequest.Login,
 		Password: logInRequest.Password,
 	}
-	name, err := s.resources.LogIn(ctx, user)
+	name, password, err := s.db.LogIn(ctx, user)
 	if err != nil {
 		return nil, convert(err)
+	}
+	if !user.IsPasswordCorrect(password) {
+		return nil, convert(errors.ErrIncorrectPassword)
 	}
 	return &messenger.User{Name: name}, nil
 }

@@ -5,7 +5,6 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE TABLE IF NOT EXISTS messages (
-    -- time timestamp NOT NULL,
     sender text NOT NULL,
     receiver text NOT NULL,
     msg text NOT NULL,
