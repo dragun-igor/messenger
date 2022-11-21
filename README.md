@@ -1,6 +1,6 @@
 # Messenger Service
 
-GRPC service for user authorization. Easily integrated into microservice architecture.
+GRPC messaging service.
 
 ## Run
 
