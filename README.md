@@ -8,6 +8,6 @@ Install protobuf: `brew install protobuf`
 
 Generate protobuf: `make generate-proto`
 
-Run app with environment:
-`cd deployments`
+Run app with environment:<br/>
+`cd deployments`<br/>
 `docker-compose up --build`
