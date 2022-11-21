@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/dragun-igor/messenger/internal/server/service/mock"
+	"github.com/dragun-igor/messenger/internal/server/service/mocks"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/suite"
 )
@@ -10,12 +10,12 @@ type MessengerSuiteServer struct {
 	suite.Suite
 
 	ctrl *gomock.Controller
-	repo *mock.MockRepository
+	repo *mocks.MockRepository
 }
 
 func (s *MessengerSuiteServer) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
-	s.repo = mock.NewMockRepository(s.ctrl)
+	s.repo = mocks.NewMockRepository(s.ctrl)
 }
 
 func (s *MessengerSuiteServer) TearDownTest() {
