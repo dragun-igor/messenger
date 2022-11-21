@@ -39,7 +39,10 @@ func NewServer(ctx context.Context, migrationsPath string, config *config.Config
 	server.metrics = metrics.NewMetricsServerService(config.PrometheusHost + ":" + config.PrometheusPort)
 	server.grpc = grpc.NewServer(
 		grpc.StreamInterceptor(server.metrics.GRPCServerStreamMetricsInterceptor()),
-		grpc.UnaryInterceptor(server.metrics.GRPCServerUnaryMetricsInterceptor()),
+		grpc.ChainUnaryInterceptor(
+			server.metrics.GRPCServerUnaryMetricsInterceptor(),
+			server.metrics.AppMetricsInterceptor(),
+		),
 	)
 	messenger.RegisterMessengerServiceServer(server.grpc, service.NewMessengerServiceServer(ctx, server.config, server.db))
 	server.metrics.Initialize(server.grpc)

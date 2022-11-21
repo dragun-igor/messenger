@@ -28,7 +28,10 @@ func NewClient(phost, pport string) *Client {
 func (c *Client) Serve(ghost, gport string) error {
 	defer c.Stop()
 	conn, err := grpc.Dial(ghost+":"+gport,
-		grpc.WithUnaryInterceptor(c.metrics.GRPCClientUnaryMetricsInterceptor()),
+		grpc.WithChainUnaryInterceptor(
+			c.metrics.GRPCClientUnaryMetricsInterceptor(),
+			c.metrics.AppMetricsInterceptor(),
+		),
 		grpc.WithStreamInterceptor(c.metrics.GRPCClientStreamMetricsInterceptor()),
 		grpc.WithBlock(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),

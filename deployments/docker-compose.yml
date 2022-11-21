@@ -1,12 +1,9 @@
 version: "3.7"
 
-
 services:
   db:
     image: postgres
     restart: always
-    ports:
-      - 5432:5432
     environment:
       POSTGRES_HOST: localhost
       POSTGRES_USER: drag
@@ -17,17 +14,21 @@ services:
       context: ..
       dockerfile: deployments/server/Dockerfile
     restart: always
+    ports:
+      - 127.0.0.1:50051:50051
+      - 127.0.0.1:9092:9092
+    links:
+      - db:db
     environment:
-      GRPC_HOST: localhost
+      PROMETHEUS_HOST: 0.0.0.0
+      PROMETHEUS_PORT: 9092
+      GRPC_HOST: 0.0.0.0
       GRPC_PORT: 50051
-      DB_HOST: 127.0.0.1
+      DB_HOST: db
       DB_PORT: 5432
       DB_USER: drag
       DB_NAME: messenger
       DB_PASSWORD: terra5308
-    network_mode: host
-    ports:
-      - 50051:50051
     depends_on:
       - db
   # client:

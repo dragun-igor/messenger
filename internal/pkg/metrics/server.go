@@ -1,7 +1,9 @@
 package metrics
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
@@ -18,6 +20,8 @@ func NewMetricsServerService(addr string) *MetricsServerService {
 	reg := prometheus.NewRegistry()
 	grpcServerMetrics := grpc_prometheus.NewServerMetrics()
 	reg.MustRegister(grpcServerMetrics)
+	reg.MustRegister(requestTimeHist)
+	reg.MustRegister(requestErrorsCounter)
 	return &MetricsServerService{
 		httpServer:        &http.Server{Handler: promhttp.HandlerFor(reg, promhttp.HandlerOpts{}), Addr: addr},
 		grpcServerMetrics: grpcServerMetrics,
@@ -26,6 +30,8 @@ func NewMetricsServerService(addr string) *MetricsServerService {
 
 func (s *MetricsServerService) Initialize(server *grpc.Server) {
 	s.grpcServerMetrics.InitializeMetrics(server)
+	requestTimeHist.GetMetricWithLabelValues(fieldMethodName)
+	requestErrorsCounter.GetMetricWithLabelValues(fieldMethodName)
 }
 
 func (s *MetricsServerService) GRPCServerUnaryMetricsInterceptor() grpc.UnaryServerInterceptor {
@@ -34,6 +40,18 @@ func (s *MetricsServerService) GRPCServerUnaryMetricsInterceptor() grpc.UnarySer
 
 func (s *MetricsServerService) GRPCServerStreamMetricsInterceptor() grpc.StreamServerInterceptor {
 	return s.grpcServerMetrics.StreamServerInterceptor()
+}
+
+func (s *MetricsServerService) AppMetricsInterceptor() grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		start := time.Now()
+		resp, err := handler(ctx, req)
+		requestTimeHist.WithLabelValues(info.FullMethod).Observe(time.Since(start).Seconds())
+		if err != nil {
+			requestErrorsCounter.WithLabelValues(info.FullMethod).Inc()
+		}
+		return resp, err
+	}
 }
 
 func (s *MetricsServerService) Listen() error {
