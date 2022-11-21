@@ -6,6 +6,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"sort"
+	"strings"
 
 	"github.com/dragun-igor/messenger/config"
 	"github.com/dragun-igor/messenger/internal/server/model"
@@ -37,12 +39,14 @@ func connectDB(ctx context.Context, migrationsPath string, config *config.Config
 	}
 	log.Println("connection to db has opened")
 
-	query, err := getMigrationQuery(migrationsPath)
+	queries, err := getMigrationsQuery(config.MigrationsPath)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := db.Exec(ctx, query); err != nil {
-		return nil, err
+	for _, query := range queries {
+		if _, err := db.Exec(ctx, query); err != nil {
+			return nil, err
+		}
 	}
 	go func() {
 		<-ctx.Done()
@@ -52,16 +56,34 @@ func connectDB(ctx context.Context, migrationsPath string, config *config.Config
 	return db, nil
 }
 
-func getMigrationQuery(migrationsPath string) (string, error) {
-	file, err := os.Open(migrationsPath)
+func getMigrationsQuery(migrationsPath string) ([]string, error) {
+	migrationsQuery := []string{}
+	dirEntries, err := os.ReadDir(migrationsPath)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	b, err := io.ReadAll(file)
-	if err != nil {
-		return "", err
+	migrationFileNames := []string{}
+	for _, de := range dirEntries {
+		if !de.IsDir() && strings.Contains(de.Name(), ".up.sql") {
+			migrationFileNames = append(migrationFileNames, de.Name())
+		}
 	}
-	return string(b), nil
+	sort.Slice(migrationFileNames, func(i, j int) bool {
+		return migrationFileNames[i] < migrationFileNames[j]
+	})
+	for _, fileName := range migrationFileNames {
+		file, err := os.Open(migrationsPath + "/" + fileName)
+		if err != nil {
+			return nil, err
+		}
+		b, err := io.ReadAll(file)
+		if err != nil {
+			return nil, err
+		}
+		migrationsQuery = append(migrationsQuery, string(b))
+	}
+
+	return migrationsQuery, nil
 }
 
 func (db PostgresDB) InsertMessage(ctx context.Context, message model.Message) error {
