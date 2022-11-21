@@ -3,6 +3,7 @@ module github.com/dragun-igor/messenger
 go 1.19
 
 require (
+	github.com/golang/mock v1.6.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/jackc/pgx/v5 v5.1.1
 	github.com/prometheus/client_golang v1.14.0

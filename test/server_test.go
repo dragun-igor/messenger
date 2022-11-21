@@ -45,10 +45,10 @@ func TestClientFlow(t *testing.T) {
 	// send message
 	message := &messenger.Message{
 		Sender:   "Name",
-		Receiver: "User",
+		Receiver: "OtherName",
 		Message:  "Hello!",
 	}
 	resp, err := messengerService.SendMessage(ctx, message)
 	require.NoError(t, err)
-	require.Equal(t, false, resp.Sent)
+	require.False(t, resp.Sent)
 }

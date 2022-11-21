@@ -15,10 +15,10 @@ import (
 type MessengerServiceServer struct {
 	messenger.UnimplementedMessengerServiceServer
 	clients map[string]chan *messenger.Message
-	db      resources.PostgresDB
+	db      resources.Repository
 }
 
-func NewMessengerServiceServer(ctx context.Context, config *config.Config, db resources.PostgresDB) *MessengerServiceServer {
+func NewMessengerServiceServer(ctx context.Context, config *config.Config, db resources.Repository) *MessengerServiceServer {
 	return &MessengerServiceServer{
 		db:      db,
 		clients: make(map[string]chan *messenger.Message),

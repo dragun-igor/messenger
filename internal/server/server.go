@@ -23,7 +23,7 @@ const gracefulTimeout = 2 * time.Second
 
 type Server struct {
 	grpc    *grpc.Server
-	db      resources.PostgresDB
+	db      resources.Repository
 	config  *config.Config
 	metrics *metrics.MetricsServerService
 }
