@@ -157,7 +157,7 @@ BEGIN:
 		}
 		fmt.Println(prefixServiceMessage + "Passwords are not matched")
 	}
-	ve, err := authData.Validate()
+	ve, err := model.Validate(authData)
 	if err != nil {
 		return err
 	}

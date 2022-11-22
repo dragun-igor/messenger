@@ -1,7 +1,6 @@
 package model
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -10,10 +9,6 @@ import (
 	"unicode/utf8"
 
 	"golang.org/x/crypto/bcrypt"
-)
-
-var (
-	ErrMinLen = errors.New("")
 )
 
 type Message struct {
@@ -43,9 +38,9 @@ func (a *AuthData) IsPasswordCorrect(password string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(a.Password), []byte(password)) == nil
 }
 
-func (a AuthData) Validate() (ValidationErrors, error) {
+func Validate(x interface{}) (ValidationErrors, error) {
 	ve := ValidationErrors{}
-	v := reflect.ValueOf(a)
+	v := reflect.ValueOf(x)
 	t := v.Type()
 	for i := 0; i < t.NumField(); i++ {
 		structField := t.Field(i)
