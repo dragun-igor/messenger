@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/dragun-igor/messenger/config"
-	"github.com/dragun-igor/messenger/internal/server/model"
+	"github.com/dragun-igor/messenger/internal/pkg/model"
 	"github.com/jackc/pgx/v5"
 )
 

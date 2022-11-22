@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/dragun-igor/messenger/internal/pkg/model"
 	"github.com/dragun-igor/messenger/proto/messenger"
 )
 
@@ -134,34 +135,42 @@ BEGIN:
 
 func (c *MessengerServiceClient) signUp(ctx context.Context, scanner *bufio.Scanner) error {
 BEGIN:
-	var login string
-	var name string
-	var password string
+	var authData model.AuthData
 	fmt.Print("Login: ")
 	if scanner.Scan() {
-		login = scanner.Text()
+		authData.Login = scanner.Text()
 	}
 	fmt.Print("Name: ")
 	if scanner.Scan() {
-		name = scanner.Text()
+		authData.Name = scanner.Text()
 	}
 	for {
 		fmt.Print("Password: ")
 		if scanner.Scan() {
-			password = scanner.Text()
+			authData.Password = scanner.Text()
 		}
 		fmt.Print("Password: ")
 		if scanner.Scan() {
-			if password == scanner.Text() {
+			if authData.Password == scanner.Text() {
 				break
 			}
 		}
 		fmt.Println(prefixServiceMessage + "Passwords are not matched")
 	}
-	_, err := c.client.SignUp(ctx, &messenger.SignUpRequest{
-		Login:    login,
-		Name:     name,
-		Password: password,
+	ve, err := authData.Validate()
+	if err != nil {
+		return err
+	}
+	if len(ve) > 0 {
+		for _, msg := range ve {
+			fmt.Println(prefixServiceMessage + msg)
+		}
+		goto BEGIN
+	}
+	_, err = c.client.SignUp(ctx, &messenger.SignUpRequest{
+		Login:    authData.Login,
+		Name:     authData.Name,
+		Password: authData.Password,
 	})
 	if err != nil {
 		fmt.Println(err)

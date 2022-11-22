@@ -3,7 +3,7 @@ package service
 import (
 	"log"
 
-	"github.com/dragun-igor/messenger/internal/server/model"
+	"github.com/dragun-igor/messenger/internal/pkg/model"
 	"github.com/dragun-igor/messenger/pkg/errors"
 	"github.com/dragun-igor/messenger/proto/messenger"
 	"golang.org/x/net/context"

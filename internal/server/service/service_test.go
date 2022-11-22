@@ -2,9 +2,10 @@ package service
 
 import (
 	"context"
+	"sync"
 	"testing"
 
-	"github.com/dragun-igor/messenger/internal/server/model"
+	"github.com/dragun-igor/messenger/internal/pkg/model"
 	"github.com/dragun-igor/messenger/internal/server/service/mocks"
 	"github.com/dragun-igor/messenger/proto/messenger"
 	"github.com/golang/mock/gomock"
@@ -67,11 +68,18 @@ func (s *MessengerSuiteServer) TestSendMessage() {
 	require.False(t, resp.Sent)
 	require.NoError(t, err)
 	protoMessage.Receiver = "Receiver"
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
-		<-s.service.clients["Receiver"]
+		defer wg.Done()
+		msg := <-s.service.clients["Receiver"]
+		require.Equal(t, protoMessage.Sender, msg.Sender)
+		require.Equal(t, protoMessage.Receiver, msg.Receiver)
+		require.Equal(t, protoMessage.Message, msg.Message)
 	}()
 	s.repo.EXPECT().InsertMessage(context.Background(), messageMatcher{modelMessage}.Message).Return(nil)
 	resp, err = s.service.SendMessage(context.Background(), protoMessage)
 	require.NoError(t, err)
 	require.True(t, resp.Sent)
+	wg.Wait()
 }

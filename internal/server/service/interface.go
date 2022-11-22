@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"github.com/dragun-igor/messenger/internal/server/model"
+	"github.com/dragun-igor/messenger/internal/pkg/model"
 )
 
 //go:generate mockgen -destination=mocks/mock.go -package=mocks . Repository
