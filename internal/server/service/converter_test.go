@@ -43,10 +43,6 @@ func (s *ConverterSuite) TestConvert() {
 			code: codes.Aborted,
 		},
 		{
-			err:  errs.ErrUserNotFound,
-			code: codes.NotFound,
-		},
-		{
 			err:  errs.ErrLoginNameIsBusy,
 			code: codes.AlreadyExists,
 		},

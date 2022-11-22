@@ -11,6 +11,7 @@ import (
 
 	"github.com/dragun-igor/messenger/internal/pkg/model"
 	"github.com/dragun-igor/messenger/proto/messenger"
+	"google.golang.org/grpc/status"
 )
 
 const prefixServiceMessage string = "[SERVICE] "
@@ -173,7 +174,7 @@ BEGIN:
 		Password: authData.Password,
 	})
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println(prefixServiceMessage + status.Convert(err).Proto().Message)
 		goto BEGIN
 	}
 	return nil
@@ -181,22 +182,21 @@ BEGIN:
 
 func (c *MessengerServiceClient) logIn(ctx context.Context, scanner *bufio.Scanner) error {
 BEGIN:
-	var login string
-	var password string
+	var authData model.AuthData
 	fmt.Print("Login: ")
 	if scanner.Scan() {
-		login = scanner.Text()
+		authData.Login = scanner.Text()
 	}
 	fmt.Print("Password: ")
 	if scanner.Scan() {
-		password = scanner.Text()
+		authData.Password = scanner.Text()
 	}
 	user, err := c.client.LogIn(ctx, &messenger.LogInRequest{
-		Login:    login,
-		Password: password,
+		Login:    authData.Login,
+		Password: authData.Password,
 	})
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println(prefixServiceMessage + status.Convert(err).Proto().Message)
 		goto BEGIN
 	}
 	c.name = user.Name

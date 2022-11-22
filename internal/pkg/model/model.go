@@ -20,7 +20,7 @@ type Message struct {
 type AuthData struct {
 	Login    string `validate:"min:4|max:20|regexp:[a-zA-z0-9]"`
 	Password string `validate:"min:8"`
-	Name     string `validate:"min:4|max:20|regexp:[a-zA-z0-9]"`
+	Name     string `validate:"min:4|max:20|regexp:[a-zA-zа-яА-Я0-9]"`
 }
 
 type ValidationErrors []string

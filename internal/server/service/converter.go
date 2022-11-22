@@ -22,8 +22,6 @@ func convert(err error) GRPCError {
 		return v
 	}
 	switch err {
-	case errors.ErrUserNotFound:
-		return newGRPCError(err, codes.NotFound)
 	case errors.ErrUserNameIsBusy, errors.ErrLoginNameIsBusy:
 		return newGRPCError(err, codes.AlreadyExists)
 	case errors.ErrIncorrectPassword:
