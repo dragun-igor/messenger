@@ -2,11 +2,13 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
 	"github.com/dragun-igor/messenger/internal/pkg/model"
 	"github.com/dragun-igor/messenger/internal/server/service/mocks"
+	"github.com/dragun-igor/messenger/pkg/errors"
 	"github.com/dragun-igor/messenger/proto/messenger"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -20,18 +22,6 @@ type MessengerSuiteServer struct {
 	ctrl    *gomock.Controller
 	repo    *mocks.MockRepository
 	service *MessengerServiceServer
-}
-
-type messageMatcher struct {
-	model.Message
-}
-
-func (m messageMatcher) Matches(x interface{}) bool {
-	m2, ok := x.(model.Message)
-	if !ok {
-		return false
-	}
-	return m2 == m.Message
 }
 
 func (s *MessengerSuiteServer) SetupTest() {
@@ -54,6 +44,7 @@ func TestMessengerServiceServer(t *testing.T) {
 
 func (s *MessengerSuiteServer) TestSendMessage() {
 	t := s.T()
+	ctx := context.Background()
 	protoMessage := &messenger.Message{
 		Sender:   "Sender",
 		Receiver: "UnknownReceiver",
@@ -77,9 +68,46 @@ func (s *MessengerSuiteServer) TestSendMessage() {
 		require.Equal(t, protoMessage.Receiver, msg.Receiver)
 		require.Equal(t, protoMessage.Message, msg.Message)
 	}()
-	s.repo.EXPECT().InsertMessage(context.Background(), messageMatcher{modelMessage}.Message).Return(nil)
-	resp, err = s.service.SendMessage(context.Background(), protoMessage)
+	s.repo.EXPECT().InsertMessage(ctx, modelMessage).Return(nil)
+	resp, err = s.service.SendMessage(ctx, protoMessage)
 	require.NoError(t, err)
 	require.True(t, resp.Sent)
 	wg.Wait()
+}
+
+func (s *MessengerSuiteServer) TestAuth() {
+	t := s.T()
+	ctx := context.Background()
+	protoAuth := &messenger.SignUpRequest{
+		Login:    "Login",
+		Name:     "Name",
+		Password: "Password",
+	}
+	modelAuth := model.AuthData{
+		Login: "Login",
+		Name:  "Name",
+	}
+	s.repo.EXPECT().CheckLoginExists(ctx, modelAuth).Return(false, nil)
+	_, err := s.service.SignUp(ctx, protoAuth)
+	require.Error(t, convert(errors.ErrLoginNameIsBusy), err)
+
+	testErr := fmt.Errorf("test error")
+	s.repo.EXPECT().CheckLoginExists(ctx, modelAuth).Return(false, testErr)
+	_, err = s.service.SignUp(ctx, protoAuth)
+	require.Error(t, convert(testErr), err)
+
+	s.repo.EXPECT().CheckLoginExists(ctx, modelAuth).Return(true, nil)
+	s.repo.EXPECT().CheckNameExists(ctx, modelAuth).Return(false, nil)
+	_, err = s.service.SignUp(ctx, protoAuth)
+	require.Error(t, convert(errors.ErrUserNameIsBusy), err)
+
+	s.repo.EXPECT().CheckLoginExists(ctx, modelAuth).Return(true, nil)
+	s.repo.EXPECT().CheckNameExists(ctx, modelAuth).Return(false, testErr)
+	_, err = s.service.SignUp(ctx, protoAuth)
+	require.Error(t, convert(testErr), err)
+
+	s.repo.EXPECT().CheckLoginExists(ctx, modelAuth).Return(true, nil)
+	s.repo.EXPECT().CheckNameExists(ctx, modelAuth).Return(true, nil)
+	_, err = s.service.SignUp(ctx, protoAuth)
+	require.Error(t, convert(testErr), err)
 }

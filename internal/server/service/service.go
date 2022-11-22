@@ -72,9 +72,6 @@ func (s *MessengerServiceServer) SignUp(ctx context.Context, signUpRequest *mess
 		Login: signUpRequest.Login,
 		Name:  signUpRequest.Name,
 	}
-	if err := user.SetHashByPassword(signUpRequest.Password); err != nil {
-		return nil, convert(err)
-	}
 	ok, err := s.db.CheckLoginExists(ctx, user)
 	if err != nil {
 		return nil, convert(err)
@@ -88,6 +85,9 @@ func (s *MessengerServiceServer) SignUp(ctx context.Context, signUpRequest *mess
 	}
 	if !ok {
 		return nil, convert(errors.ErrUserNameIsBusy)
+	}
+	if err := user.SetHashByPassword(signUpRequest.Password); err != nil {
+		return nil, convert(err)
 	}
 	err = s.db.CreateUser(ctx, user)
 	if err != nil {
