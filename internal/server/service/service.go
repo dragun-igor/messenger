@@ -3,7 +3,6 @@ package service
 import (
 	"log"
 
-	"github.com/dragun-igor/messenger/config"
 	"github.com/dragun-igor/messenger/internal/server/model"
 	"github.com/dragun-igor/messenger/pkg/errors"
 	"github.com/dragun-igor/messenger/proto/messenger"
@@ -17,7 +16,7 @@ type MessengerServiceServer struct {
 	db      Repository
 }
 
-func NewMessengerServiceServer(ctx context.Context, config *config.Config, db Repository) *MessengerServiceServer {
+func NewMessengerServiceServer(ctx context.Context, db Repository) *MessengerServiceServer {
 	return &MessengerServiceServer{
 		db:      db,
 		clients: make(map[string]chan *messenger.Message),

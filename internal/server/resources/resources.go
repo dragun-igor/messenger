@@ -23,12 +23,12 @@ type PostgresDB struct {
 	*pgx.Conn
 }
 
-func InitPostgresDB(ctx context.Context, migrationsPath string, config *config.Config) (PostgresDB, error) {
-	db, err := connectDB(ctx, migrationsPath, config)
+func InitPostgresDB(ctx context.Context, config *config.Config) (PostgresDB, error) {
+	db, err := connectDB(ctx, config)
 	return PostgresDB{db}, err
 }
 
-func connectDB(ctx context.Context, migrationsPath string, config *config.Config) (*pgx.Conn, error) {
+func connectDB(ctx context.Context, config *config.Config) (*pgx.Conn, error) {
 	url := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", config.DBUser, config.DBPassword, config.DBHost, config.DBPort, config.DBName)
 	db, err := pgx.Connect(ctx, url)
 	if err != nil {

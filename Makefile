@@ -6,6 +6,6 @@ generate-proto:
 test:
 	go test -cover --tags=ci ./...
 
-.PHONY: mocks
-mocks:
-	mockgen -package=mocks -source internal/server/resources/interface.go -destination internal/server/service/mocks/mock.go
+.PHONY: generate-mocks
+generate-mocks:
+	go generate internal/server/service/interface.go

@@ -10,7 +10,7 @@ import (
 
 func main() {
 	config := config.Get()
-	server, err := server.NewServer(context.Background(), "migrations/createtables.up.sql", config)
+	server, err := server.NewServer(context.Background(), config)
 	if err != nil {
 		log.Fatalln(err)
 	}

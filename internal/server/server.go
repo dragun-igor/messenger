@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net"
 	"os"
@@ -28,9 +27,9 @@ type Server struct {
 	metrics *metrics.MetricsServerService
 }
 
-func NewServer(ctx context.Context, migrationsPath string, config *config.Config) (*Server, error) {
+func NewServer(ctx context.Context, config *config.Config) (*Server, error) {
 	server := &Server{}
-	db, err := resources.InitPostgresDB(ctx, migrationsPath, config)
+	db, err := resources.InitPostgresDB(ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +43,7 @@ func NewServer(ctx context.Context, migrationsPath string, config *config.Config
 			server.metrics.AppMetricsInterceptor(),
 		),
 	)
-	messenger.RegisterMessengerServiceServer(server.grpc, service.NewMessengerServiceServer(ctx, server.config, server.db))
+	messenger.RegisterMessengerServiceServer(server.grpc, service.NewMessengerServiceServer(ctx, server.db))
 	server.metrics.Initialize(server.grpc)
 	grpc_prometheus.Register(server.grpc)
 	return server, nil
@@ -52,7 +51,7 @@ func NewServer(ctx context.Context, migrationsPath string, config *config.Config
 
 func (s *Server) Serve() error {
 	defer s.Stop()
-	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%s", s.config.GRPCHost, s.config.GRPCPort))
+	lis, err := net.Listen("tcp", s.config.GRPCHost+":"+s.config.GRPCPort)
 	if err != nil {
 		return err
 	}
