@@ -50,35 +50,44 @@ func Validate(x interface{}) (ValidationErrors, error) {
 			continue
 		}
 		tags := strings.Split(tag, "|")
+		var err error
 		switch value.Kind() {
 		case reflect.String:
-			for _, tag := range tags {
-				tagSplit := strings.Split(tag, ":")
-				switch tagSplit[0] {
-				case "min":
-					tagValue, err := strconv.Atoi(tagSplit[1])
-					if err != nil {
-						return nil, err
-					}
-					ve = validateStringMinLen(ve, structField.Name, value.String(), tagValue)
-				case "max":
-					tagValue, err := strconv.Atoi(tagSplit[1])
-					if err != nil {
-						return nil, err
-					}
-					ve = validateStringMaxLen(ve, structField.Name, value.String(), tagValue)
-				case "regexp":
-					var err error
-					ve, err = validateStringRegExp(ve, structField.Name, value.String(), tagSplit[1])
-					if err != nil {
-						return nil, err
-					}
-				default:
-					// Unimplemented tags
-				}
+			ve, err = validateString(ve, structField.Name, tags, value.String())
+		default:
+			return nil, fmt.Errorf("unimplemented type: %s field: %s", value.Kind().String(), structField.Name)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	return ve, nil
+}
+
+func validateString(ve ValidationErrors, fieldName string, tags []string, value string) (ValidationErrors, error) {
+	for _, tag := range tags {
+		tagSplit := strings.Split(tag, ":")
+		switch tagSplit[0] {
+		case "min":
+			tagValue, err := strconv.Atoi(tagSplit[1])
+			if err != nil {
+				return nil, err
+			}
+			ve = validateStringMinLen(ve, fieldName, value, tagValue)
+		case "max":
+			tagValue, err := strconv.Atoi(tagSplit[1])
+			if err != nil {
+				return nil, err
+			}
+			ve = validateStringMaxLen(ve, fieldName, value, tagValue)
+		case "regexp":
+			var err error
+			ve, err = validateStringRegExp(ve, fieldName, value, tagSplit[1])
+			if err != nil {
+				return nil, err
 			}
 		default:
-			// Unimplemented types
+			return nil, fmt.Errorf("unknown tag: %s field: %s", tagSplit[0], fieldName)
 		}
 	}
 	return ve, nil
