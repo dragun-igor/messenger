@@ -22,35 +22,11 @@ func (s *MessengerSuiteServer) TearDownTest() {
 	s.ctrl.Finish()
 }
 
-func (s *MessengerSuiteServer) TestInsertMessage_Success() {
-	// todo
+func (s *MessengerSuiteServer) TestSignUp_Success() {
+
 }
 
-func (s *MessengerSuiteServer) TestInsertMessage_Error() {
-	// todo
-}
-
-func (s *MessengerSuiteServer) TestCreateUser_Success() {
-	// todo
-}
-
-func (s *MessengerSuiteServer) TestCreateUser_Error() {
-	// todo
-}
-
-func (s *MessengerSuiteServer) TestCheckLoginExists_Success() {
-	// todo
-}
-
-func (s *MessengerSuiteServer) TestCheckLoginExists_Error() {
-	// todo
-}
-
-func (s *MessengerSuiteServer) TestCheckNameExists_Success() {
-	// todo
-}
-
-func (s *MessengerSuiteServer) TestCheckNameExists_Error() {
+func (s *MessengerSuiteServer) TestSignUp_Error() {
 	// todo
 }
 
@@ -62,10 +38,10 @@ func (s *MessengerSuiteServer) TestLogIn_Error() {
 	// todo
 }
 
-func (s *MessengerSuiteServer) TestClose_Success() {
+func (s *MessengerSuiteServer) TestSendMessage_Success() {
 	// todo
 }
 
-func (s *MessengerSuiteServer) TestClose_Error() {
+func (s *MessengerSuiteServer) TestSendMessage_Error() {
 	// todo
 }

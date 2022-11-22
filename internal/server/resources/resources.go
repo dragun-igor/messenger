@@ -48,11 +48,6 @@ func connectDB(ctx context.Context, migrationsPath string, config *config.Config
 			return nil, err
 		}
 	}
-	go func() {
-		<-ctx.Done()
-		_ = db.Close(ctx)
-		log.Println("connection to db has closed")
-	}()
 	return db, nil
 }
 
@@ -92,13 +87,13 @@ func (db PostgresDB) InsertMessage(ctx context.Context, message model.Message) e
 	return err
 }
 
-func (db PostgresDB) CreateUser(ctx context.Context, user model.User) error {
+func (db PostgresDB) CreateUser(ctx context.Context, user model.AuthData) error {
 	query := fmt.Sprintf("INSERT INTO %s VALUES ($1, $2, $3);", usersTable)
 	_, err := db.Exec(ctx, query, user.Login, user.Name, user.Password)
 	return err
 }
 
-func (db PostgresDB) CheckLoginExists(ctx context.Context, user model.User) (bool, error) {
+func (db PostgresDB) CheckLoginExists(ctx context.Context, user model.AuthData) (bool, error) {
 	var ok bool
 	query := fmt.Sprintf("SELECT EXISTS(SELECT * FROM %s WHERE login = $1)", usersTable)
 	row := db.QueryRow(ctx, query, user.Login)
@@ -106,7 +101,7 @@ func (db PostgresDB) CheckLoginExists(ctx context.Context, user model.User) (boo
 	return !ok, err
 }
 
-func (db PostgresDB) CheckNameExists(ctx context.Context, user model.User) (bool, error) {
+func (db PostgresDB) CheckNameExists(ctx context.Context, user model.AuthData) (bool, error) {
 	var ok bool
 	query := fmt.Sprintf("SELECT EXISTS(SELECT * FROM %s WHERE name = $1)", usersTable)
 	row := db.QueryRow(ctx, query, user.Name)
@@ -114,11 +109,12 @@ func (db PostgresDB) CheckNameExists(ctx context.Context, user model.User) (bool
 	return !ok, err
 }
 
-func (db PostgresDB) LogIn(ctx context.Context, user model.User) (string, string, error) {
+func (db PostgresDB) GetUser(ctx context.Context, user model.AuthData) (model.AuthData, error) {
+	var login string
 	var name string
 	var password string
-	query := fmt.Sprintf("SELECT name, password FROM %s WHERE login = $1", usersTable)
+	query := fmt.Sprintf("SELECT * FROM %s WHERE login = $1", usersTable)
 	row := db.QueryRow(ctx, query, user.Login)
-	err := row.Scan(&name, &password)
-	return name, password, err
+	err := row.Scan(&login, &name, &password)
+	return model.AuthData{Login: login, Name: name, Password: password}, err
 }

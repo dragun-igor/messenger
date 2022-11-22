@@ -8,21 +8,21 @@ type Message struct {
 	Message  string
 }
 
-type User struct {
+type AuthData struct {
 	Login    string
 	Password string
 	Name     string
 }
 
-func (u *User) SetHashByPassword(password string) error {
+func (a *AuthData) SetHashByPassword(password string) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
 	if err != nil {
 		return err
 	}
-	u.Password = string(hash)
+	a.Password = string(hash)
 	return nil
 }
 
-func (u *User) IsPasswordCorrect(password string) bool {
-	return bcrypt.CompareHashAndPassword([]byte(password), []byte(u.Password)) == nil
+func (a *AuthData) IsPasswordCorrect(password string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(a.Password), []byte(password)) == nil
 }

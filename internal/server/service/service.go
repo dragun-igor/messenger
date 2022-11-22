@@ -5,7 +5,6 @@ import (
 
 	"github.com/dragun-igor/messenger/config"
 	"github.com/dragun-igor/messenger/internal/server/model"
-	"github.com/dragun-igor/messenger/internal/server/resources"
 	"github.com/dragun-igor/messenger/pkg/errors"
 	"github.com/dragun-igor/messenger/proto/messenger"
 	"golang.org/x/net/context"
@@ -15,10 +14,10 @@ import (
 type MessengerServiceServer struct {
 	messenger.UnimplementedMessengerServiceServer
 	clients map[string]chan *messenger.Message
-	db      resources.Repository
+	db      Repository
 }
 
-func NewMessengerServiceServer(ctx context.Context, config *config.Config, db resources.Repository) *MessengerServiceServer {
+func NewMessengerServiceServer(ctx context.Context, config *config.Config, db Repository) *MessengerServiceServer {
 	return &MessengerServiceServer{
 		db:      db,
 		clients: make(map[string]chan *messenger.Message),
@@ -70,7 +69,7 @@ func (s *MessengerServiceServer) Ping(stream messenger.MessengerService_PingServ
 }
 
 func (s *MessengerServiceServer) SignUp(ctx context.Context, signUpRequest *messenger.SignUpRequest) (*emptypb.Empty, error) {
-	user := model.User{
+	user := model.AuthData{
 		Login: signUpRequest.Login,
 		Name:  signUpRequest.Name,
 	}
@@ -99,16 +98,15 @@ func (s *MessengerServiceServer) SignUp(ctx context.Context, signUpRequest *mess
 }
 
 func (s *MessengerServiceServer) LogIn(ctx context.Context, logInRequest *messenger.LogInRequest) (*messenger.User, error) {
-	user := model.User{
-		Login:    logInRequest.Login,
-		Password: logInRequest.Password,
+	user := model.AuthData{
+		Login: logInRequest.Login,
 	}
-	name, password, err := s.db.LogIn(ctx, user)
+	dbUser, err := s.db.GetUser(ctx, user)
 	if err != nil {
 		return nil, convert(err)
 	}
-	if !user.IsPasswordCorrect(password) {
+	if !dbUser.IsPasswordCorrect(logInRequest.Password) {
 		return nil, convert(errors.ErrIncorrectPassword)
 	}
-	return &messenger.User{Name: name}, nil
+	return &messenger.User{Name: dbUser.Name}, nil
 }

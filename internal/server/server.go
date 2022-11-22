@@ -23,7 +23,7 @@ const gracefulTimeout = 2 * time.Second
 
 type Server struct {
 	grpc    *grpc.Server
-	db      resources.Repository
+	db      resources.PostgresDB
 	config  *config.Config
 	metrics *metrics.MetricsServerService
 }
@@ -62,8 +62,9 @@ func (s *Server) Serve() error {
 	go func() {
 		<-sigCh
 		log.Println("termination signal received")
-		log.Println("stop grpc server")
+		log.Println("stopping grpc server")
 		s.grpc.GracefulStop()
+		log.Println("grpc server is stopped")
 	}()
 
 	go func() {
@@ -77,9 +78,11 @@ func (s *Server) Serve() error {
 func (s *Server) Stop() {
 	time.Sleep(gracefulTimeout)
 
-	log.Println("disconnect db")
+	log.Println("disconnecting db")
 	s.db.Close(context.Background())
+	log.Println("connection to db has closed")
 
-	log.Println("stop metrics server")
+	log.Println("stopping metrics server")
 	s.metrics.Close()
+	log.Println("metrics server is stopped")
 }
