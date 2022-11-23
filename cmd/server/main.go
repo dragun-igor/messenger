@@ -15,7 +15,7 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	if err := server.Serve(); err != nil {
+	if err := server.Serve(ctx); err != nil {
 		log.Fatalln(err)
 	}
 }

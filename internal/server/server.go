@@ -22,6 +22,7 @@ const gracefulTimeout = 2 * time.Second
 
 type Server struct {
 	grpc    *grpc.Server
+	service *service.Service
 	db      resources.PostgresDB
 	config  *config.Config
 	metrics *metrics.MetricsServerService
@@ -33,8 +34,10 @@ func New(ctx context.Context, config *config.Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	s := service.New(ctx, server.db)
 	server.config = config
 	server.db = db
+	server.service = s
 	server.metrics = metrics.NewMetricsServerService(config.PrometheusHost + ":" + config.PrometheusPort)
 	server.grpc = grpc.NewServer(
 		grpc.StreamInterceptor(server.metrics.GRPCServerStreamMetricsInterceptor()),
@@ -43,7 +46,7 @@ func New(ctx context.Context, config *config.Config) (*Server, error) {
 			server.metrics.AppMetricsInterceptor(),
 		),
 	)
-	messenger.RegisterMessengerServiceServer(server.grpc, service.New(ctx, server.db))
+	messenger.RegisterMessengerServiceServer(server.grpc, s)
 	err = server.metrics.Initialize(server.grpc)
 	if err != nil {
 		return nil, err
@@ -52,8 +55,8 @@ func New(ctx context.Context, config *config.Config) (*Server, error) {
 	return server, nil
 }
 
-func (s *Server) Serve() error {
-	defer s.Stop()
+func (s *Server) Serve(ctx context.Context) error {
+	defer s.Stop(ctx)
 	lis, err := net.Listen("tcp", s.config.GRPCHost+":"+s.config.GRPCPort)
 	if err != nil {
 		return err
@@ -65,8 +68,7 @@ func (s *Server) Serve() error {
 		<-sigCh
 		log.Println("termination signal received")
 		log.Println("stopping grpc server")
-		// s.grpc.GracefulStop()
-		s.grpc.Stop()
+		s.grpc.GracefulStop()
 		log.Println("grpc server is stopped")
 	}()
 
@@ -78,14 +80,15 @@ func (s *Server) Serve() error {
 	return s.grpc.Serve(lis)
 }
 
-func (s *Server) Stop() {
+func (s *Server) Stop(ctx context.Context) {
 	time.Sleep(gracefulTimeout)
+
+	log.Println("stopping grpc server")
+	s.grpc.Stop()
 
 	log.Println("disconnecting db")
 	s.db.Close(context.Background())
-	log.Println("connection to db has closed")
 
 	log.Println("stopping metrics server")
 	s.metrics.Close()
-	log.Println("metrics server is stopped")
 }

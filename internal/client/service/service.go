@@ -140,7 +140,7 @@ BEGIN:
 func (c *Service) signUp(ctx context.Context, scanner *bufio.Scanner) error {
 BEGIN:
 	var authData model.AuthData
-	fmt.Print(logInLabel)
+	fmt.Print(loginLabel)
 	if scanner.Scan() {
 		authData.Login = scanner.Text()
 	}
@@ -186,7 +186,7 @@ BEGIN:
 func (c *Service) logIn(ctx context.Context, scanner *bufio.Scanner) error {
 BEGIN:
 	var authData model.AuthData
-	fmt.Print(logInLabel)
+	fmt.Print(loginLabel)
 	if scanner.Scan() {
 		authData.Login = scanner.Text()
 	}
