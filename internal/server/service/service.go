@@ -2,6 +2,7 @@ package service
 
 import (
 	"log"
+	"sync"
 
 	"github.com/dragun-igor/messenger/internal/pkg/model"
 	"github.com/dragun-igor/messenger/pkg/errors"
@@ -11,6 +12,7 @@ import (
 )
 
 type Service struct {
+	mu sync.Mutex
 	messenger.UnimplementedMessengerServiceServer
 	clients map[string]chan *messenger.Message
 	db      Repository
@@ -19,6 +21,7 @@ type Service struct {
 
 func New(db Repository, closeCh <-chan struct{}) *Service {
 	return &Service{
+		mu:      sync.Mutex{},
 		db:      db,
 		clients: make(map[string]chan *messenger.Message),
 		closeCh: closeCh,
@@ -51,12 +54,13 @@ func (s *Service) ReceiveMessage(stream messenger.MessengerService_ReceiveMessag
 	if err != nil {
 		return convert(err)
 	}
+	s.mu.Lock()
 	s.clients[user.Name] = make(chan *messenger.Message)
+	s.mu.Unlock()
 	log.Printf("user %s is online", user.Name)
 	for {
 		select {
 		case <-s.closeCh:
-			delete(s.clients, user.Name)
 			return nil
 		case <-stream.Context().Done():
 			log.Printf("user %s is offline", user.Name)

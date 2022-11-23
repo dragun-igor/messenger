@@ -110,6 +110,9 @@ func (c *Service) reconnect(ctx context.Context) {
 }
 
 func (c *Service) listenMessage(ctx context.Context) {
+	defer func() {
+		fmt.Println("return from listenMessage")
+	}()
 	stream, err := c.client.ReceiveMessage(ctx)
 	if err != nil {
 		log.Fatalln(err)

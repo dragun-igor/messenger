@@ -65,20 +65,10 @@ func (s *Server) Serve(ctx context.Context) error {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigCh
-		go func() {
-		CYCLE:
-			for {
-				select {
-				case s.closeCh <- struct{}{}:
-				case <-s.closeCh:
-					break CYCLE
-				}
-			}
-		}()
 		log.Println("termination signal received")
 		log.Println("stopping grpc server")
-		s.grpc.GracefulStop()
 		close(s.closeCh)
+		s.grpc.GracefulStop()
 		log.Println("grpc server is stopped")
 	}()
 
