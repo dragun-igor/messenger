@@ -44,7 +44,10 @@ func NewServer(ctx context.Context, config *config.Config) (*Server, error) {
 		),
 	)
 	messenger.RegisterMessengerServiceServer(server.grpc, service.NewMessengerServiceServer(ctx, server.db))
-	server.metrics.Initialize(server.grpc)
+	err = server.metrics.Initialize(server.grpc)
+	if err != nil {
+		return nil, err
+	}
 	grpc_prometheus.Register(server.grpc)
 	return server, nil
 }

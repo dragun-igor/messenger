@@ -28,10 +28,14 @@ func NewMetricsServerService(addr string) *MetricsServerService {
 	}
 }
 
-func (s *MetricsServerService) Initialize(server *grpc.Server) {
+func (s *MetricsServerService) Initialize(server *grpc.Server) error {
 	s.grpcServerMetrics.InitializeMetrics(server)
-	requestTimeHist.GetMetricWithLabelValues(fieldMethodName)
-	requestErrorsCounter.GetMetricWithLabelValues(fieldMethodName)
+	_, err := requestTimeHist.GetMetricWithLabelValues(fieldMethodName)
+	if err != nil {
+		return err
+	}
+	_, err = requestErrorsCounter.GetMetricWithLabelValues(fieldMethodName)
+	return err
 }
 
 func (s *MetricsServerService) GRPCServerUnaryMetricsInterceptor() grpc.UnaryServerInterceptor {

@@ -46,7 +46,10 @@ func (s *MessengerServiceServer) ReceiveMessage(user *messenger.User, stream mes
 		case <-stream.Context().Done():
 			return nil
 		case msg := <-s.clients[user.Name]:
-			stream.Send(msg)
+			err := stream.Send(msg)
+			if err != nil {
+				log.Println(err)
+			}
 		}
 	}
 }
