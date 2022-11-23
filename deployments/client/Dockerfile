@@ -9,7 +9,6 @@ RUN mkdir /app/internal/pkg
 COPY ./cmd/client /app/cmd/client
 COPY ./internal/client /app/internal/client
 COPY ./proto /app/proto
-RUN rm /app/proto/proto.bat
 COPY go.mod /app
 COPY /internal/pkg /app/internal/pkg
 WORKDIR /app

@@ -5,10 +5,9 @@ services:
     image: postgres
     restart: always
     environment:
-      POSTGRES_HOST: localhost
-      POSTGRES_USER: drag
+      POSTGRES_USER: user
       POSTGRES_DB: messenger
-      POSTGRES_PASSWORD: terra5308
+      POSTGRES_PASSWORD: password
   server:
     build:
       context: ..

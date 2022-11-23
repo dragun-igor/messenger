@@ -12,7 +12,6 @@ RUN mkdir /app/internal/pkg
 COPY /cmd/server /app/cmd/server
 COPY /internal/server /app/internal/server
 COPY /proto /app/proto
-RUN rm /app/proto/proto.bat
 COPY /migrations /app/migrations
 COPY /pkg /app/pkg
 COPY /config /app/config
