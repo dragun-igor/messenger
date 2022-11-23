@@ -25,9 +25,9 @@ services:
       GRPC_PORT: 50051
       DB_HOST: db
       DB_PORT: 5432
-      DB_USER: drag
+      DB_USER: user
       DB_NAME: messenger
-      DB_PASSWORD: terra5308
+      DB_PASSWORD: password
     depends_on:
       - db
   # client:
