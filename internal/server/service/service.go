@@ -10,20 +10,20 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-type MessengerServiceServer struct {
+type Service struct {
 	messenger.UnimplementedMessengerServiceServer
 	clients map[string]chan *messenger.Message
 	db      Repository
 }
 
-func NewMessengerServiceServer(ctx context.Context, db Repository) *MessengerServiceServer {
-	return &MessengerServiceServer{
+func New(ctx context.Context, db Repository) *Service {
+	return &Service{
 		db:      db,
 		clients: make(map[string]chan *messenger.Message),
 	}
 }
 
-func (s *MessengerServiceServer) SendMessage(ctx context.Context, message *messenger.Message) (*messenger.MessageResponse, error) {
+func (s *Service) SendMessage(ctx context.Context, message *messenger.Message) (*messenger.MessageResponse, error) {
 	if _, ok := s.clients[message.Receiver]; !ok {
 		return &messenger.MessageResponse{Sent: false}, nil
 	}
@@ -40,10 +40,18 @@ func (s *MessengerServiceServer) SendMessage(ctx context.Context, message *messe
 	return &messenger.MessageResponse{Sent: true}, nil
 }
 
-func (s *MessengerServiceServer) ReceiveMessage(user *messenger.User, stream messenger.MessengerService_ReceiveMessageServer) error {
+func (s *Service) ReceiveMessage(stream messenger.MessengerService_ReceiveMessageServer) error {
+	user, err := stream.Recv()
+	if err != nil {
+		return convert(err)
+	}
+	s.clients[user.Name] = make(chan *messenger.Message)
+	log.Printf("user %s is online", user.Name)
 	for {
 		select {
 		case <-stream.Context().Done():
+			log.Printf("user %s is offline", user.Name)
+			delete(s.clients, user.Name)
 			return nil
 		case msg := <-s.clients[user.Name]:
 			err := stream.Send(msg)
@@ -54,23 +62,7 @@ func (s *MessengerServiceServer) ReceiveMessage(user *messenger.User, stream mes
 	}
 }
 
-func (s *MessengerServiceServer) Ping(stream messenger.MessengerService_PingServer) error {
-	user, err := stream.Recv()
-	if err != nil {
-		return convert(err)
-	}
-	log.Printf("user %s is online", user.Name)
-	s.clients[user.Name] = make(chan *messenger.Message)
-	if err := stream.Send(&emptypb.Empty{}); err != nil {
-		return convert(err)
-	}
-	<-stream.Context().Done()
-	delete(s.clients, user.Name)
-	log.Printf("user %s is offline", user.Name)
-	return nil
-}
-
-func (s *MessengerServiceServer) SignUp(ctx context.Context, signUpRequest *messenger.SignUpRequest) (*emptypb.Empty, error) {
+func (s *Service) SignUp(ctx context.Context, signUpRequest *messenger.SignUpRequest) (*emptypb.Empty, error) {
 	user := model.AuthData{
 		Login: signUpRequest.Login,
 		Name:  signUpRequest.Name,
@@ -99,7 +91,7 @@ func (s *MessengerServiceServer) SignUp(ctx context.Context, signUpRequest *mess
 	return &emptypb.Empty{}, nil
 }
 
-func (s *MessengerServiceServer) LogIn(ctx context.Context, logInRequest *messenger.LogInRequest) (*messenger.User, error) {
+func (s *Service) LogIn(ctx context.Context, logInRequest *messenger.LogInRequest) (*messenger.User, error) {
 	user := model.AuthData{
 		Login: logInRequest.Login,
 	}

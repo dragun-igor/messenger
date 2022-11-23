@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"log"
-	"time"
 
 	"github.com/dragun-igor/messenger/internal/client/service"
 	"github.com/dragun-igor/messenger/internal/pkg/metrics"
@@ -12,49 +11,47 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-const gracefulTimeout = 2 * time.Second
-
 type Client struct {
-	service *service.MessengerServiceClient
+	service *service.Service
 	metrics *metrics.MetricsClientService
+	conn    *grpc.ClientConn
 }
 
-func NewClient(phost, pport string) *Client {
-	return &Client{
-		metrics: metrics.NewMetricsClientService(phost + ":" + pport),
-	}
-}
-
-func (c *Client) Serve(ghost, gport string) error {
-	defer c.Stop()
-	conn, err := grpc.Dial(ghost+":"+gport,
+func New(grpcAddr, promAddr string) (*Client, error) {
+	client := &Client{}
+	metric := metrics.NewMetricsClientService(promAddr)
+	conn, err := grpc.Dial(grpcAddr,
 		grpc.WithChainUnaryInterceptor(
-			c.metrics.GRPCClientUnaryMetricsInterceptor(),
-			c.metrics.AppMetricsInterceptor(),
+			metric.GRPCClientUnaryMetricsInterceptor(),
+			metric.AppMetricsInterceptor(),
 		),
-		grpc.WithStreamInterceptor(c.metrics.GRPCClientStreamMetricsInterceptor()),
+		grpc.WithStreamInterceptor(metric.GRPCClientStreamMetricsInterceptor()),
 		grpc.WithBlock(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer conn.Close()
 
-	ctx := context.Background()
-	c.service = service.NewClientService(messenger.NewMessengerServiceClient(conn))
+	client.metrics = metric
+	client.conn = conn
+	return client, nil
+}
 
+func (c *Client) Serve(ctx context.Context) error {
+	defer c.Stop()
+	c.service = service.New(messenger.NewMessengerServiceClient(c.conn))
 	go func() {
 		if err := c.metrics.Listen(); err != nil {
 			log.Println(err)
 		}
 	}()
-
 	return c.service.Serve(ctx)
 }
 
 func (c *Client) Stop() {
-	time.Sleep(gracefulTimeout)
+	log.Println("closing connection")
+	c.conn.Close()
 
 	log.Println("stop metrics server")
 	c.metrics.Close()

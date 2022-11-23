@@ -27,7 +27,7 @@ type Server struct {
 	metrics *metrics.MetricsServerService
 }
 
-func NewServer(ctx context.Context, config *config.Config) (*Server, error) {
+func New(ctx context.Context, config *config.Config) (*Server, error) {
 	server := &Server{}
 	db, err := resources.InitPostgresDB(ctx, config)
 	if err != nil {
@@ -43,7 +43,7 @@ func NewServer(ctx context.Context, config *config.Config) (*Server, error) {
 			server.metrics.AppMetricsInterceptor(),
 		),
 	)
-	messenger.RegisterMessengerServiceServer(server.grpc, service.NewMessengerServiceServer(ctx, server.db))
+	messenger.RegisterMessengerServiceServer(server.grpc, service.New(ctx, server.db))
 	err = server.metrics.Initialize(server.grpc)
 	if err != nil {
 		return nil, err
@@ -65,7 +65,8 @@ func (s *Server) Serve() error {
 		<-sigCh
 		log.Println("termination signal received")
 		log.Println("stopping grpc server")
-		s.grpc.GracefulStop()
+		// s.grpc.GracefulStop()
+		s.grpc.Stop()
 		log.Println("grpc server is stopped")
 	}()
 

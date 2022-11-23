@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 
@@ -8,16 +9,18 @@ import (
 )
 
 var (
-	ghost = flag.String("ghost", "localhost", "GRPC host")
-	gport = flag.String("gport", "50051", "GRPC port")
-	phost = flag.String("phost", "localhost", "Prometheus host")
-	pport = flag.String("pport", "9094", "Prometheus port")
+	grpcAddr = flag.String("gaddr", "localhost:50051", "GRPC host")
+	promAddr = flag.String("paddr", "localhost:9094", "Prometheus host")
 )
 
 func main() {
 	flag.Parse()
-	client := client.NewClient(*phost, *pport)
-	if err := client.Serve(*ghost, *gport); err != nil {
+	ctx := context.Background()
+	c, err := client.New(*grpcAddr, *promAddr)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	if err := c.Serve(ctx); err != nil {
 		log.Fatalln(err)
 	}
 }

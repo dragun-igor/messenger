@@ -18,27 +18,44 @@ import (
 
 const prefixServiceMessage string = "[SERVICE] "
 
-type MessengerServiceClient struct {
+const (
+	nLabel   string = "n"
+	noLabel  string = "no"
+	yLabel   string = "y"
+	yesLabel string = "yes"
+
+	nRusLabel   string = "н"
+	noRusLabel  string = "нет"
+	yRusLabel   string = "д"
+	yesRusLabel string = "да"
+
+	signUpLabel string = "SIGN UP"
+	logInLabel  string = "LOG IN"
+
+	loginLabel    string = "Login: "
+	nameLabel     string = "Name: "
+	passwordLabel string = "Password: "
+)
+
+type Service struct {
 	client messenger.MessengerServiceClient
 	name   string
 }
 
-func NewClientService(client messenger.MessengerServiceClient) *MessengerServiceClient {
-	return &MessengerServiceClient{client: client}
+func New(client messenger.MessengerServiceClient) *Service {
+	return &Service{client: client}
 }
 
-func (c *MessengerServiceClient) Serve(ctx context.Context) error {
+func (c *Service) Serve(ctx context.Context) error {
 	scanner := bufio.NewScanner(os.Stdin)
 	if err := c.auth(ctx, scanner); err != nil {
 		return err
 	}
-	if err := c.connect(ctx); err != nil {
-		return err
-	}
+	go c.listenMessage(ctx)
 	return c.listenScanner(ctx, scanner)
 }
 
-func (c *MessengerServiceClient) listenScanner(ctx context.Context, scanner *bufio.Scanner) error {
+func (c *Service) listenScanner(ctx context.Context, scanner *bufio.Scanner) error {
 	fmt.Printf(prefixServiceMessage+"Hello, %s!\n", c.name)
 	for scanner.Scan() {
 		message := scanner.Text()
@@ -54,28 +71,7 @@ func (c *MessengerServiceClient) listenScanner(ctx context.Context, scanner *buf
 	return nil
 }
 
-func (c *MessengerServiceClient) receiveMessage(ctx context.Context) {
-	stream, err := c.client.ReceiveMessage(ctx, &messenger.User{Name: c.name})
-	if err != nil {
-		log.Fatalln(err)
-	}
-	go func() {
-		<-stream.Context().Done()
-		fmt.Println(prefixServiceMessage + "Connection to server has lost")
-	}()
-	for {
-		msg, err := stream.Recv()
-		if errors.Is(err, io.EOF) {
-			return
-		}
-		if err != nil {
-			return
-		}
-		fmt.Printf("%v: %v\n", msg.Sender, msg.Message)
-	}
-}
-
-func (c *MessengerServiceClient) sendMessage(ctx context.Context, message string) error {
+func (c *Service) sendMessage(ctx context.Context, message string) error {
 	messageSplit := strings.SplitN(message, " ", 2)
 	if len(messageSplit) < 2 {
 		fmt.Println(prefixServiceMessage + "Incorrect message. Message should look like \"{username} {message}\"")
@@ -95,37 +91,42 @@ func (c *MessengerServiceClient) sendMessage(ctx context.Context, message string
 	return nil
 }
 
-func (c *MessengerServiceClient) connect(ctx context.Context) error {
-	stream, err := c.client.Ping(ctx)
+func (c *Service) listenMessage(ctx context.Context) {
+	stream, err := c.client.ReceiveMessage(ctx)
 	if err != nil {
-		return err
+		log.Fatalln(err)
 	}
-	err = stream.Send(&messenger.User{Name: c.name})
-	if err != nil {
-		return err
+	stream.Send(&messenger.User{Name: c.name})
+	go func() {
+		<-stream.Context().Done()
+		fmt.Println(prefixServiceMessage + "Connection to server has lost")
+	}()
+	for {
+		msg, err := stream.Recv()
+		if errors.Is(err, io.EOF) {
+			return
+		}
+		if err != nil {
+			return
+		}
+		fmt.Printf("%v: %v\n", msg.Sender, msg.Message)
 	}
-	_, err = stream.Recv()
-	if err != nil {
-		return err
-	}
-	go c.receiveMessage(ctx)
-	return nil
 }
 
-func (c *MessengerServiceClient) auth(ctx context.Context, scanner *bufio.Scanner) error {
+func (c *Service) auth(ctx context.Context, scanner *bufio.Scanner) error {
 BEGIN:
 	fmt.Print("Are you already have a account? ")
 	if scanner.Scan() {
 		text := strings.ToLower(scanner.Text())
 		switch text {
-		case "n", "no", "н", "нет":
-			fmt.Println(prefixServiceMessage + "SIGN UP")
+		case nLabel, noLabel, nRusLabel, noRusLabel:
+			fmt.Println(prefixServiceMessage + signUpLabel)
 			if err := c.signUp(ctx, scanner); err != nil {
 				return err
 			}
 			fallthrough
-		case "y", "yes", "д", "да":
-			fmt.Println(prefixServiceMessage + "LOG IN")
+		case yLabel, yesLabel, yRusLabel, yesRusLabel:
+			fmt.Println(prefixServiceMessage + logInLabel)
 			if err := c.logIn(ctx, scanner); err != nil {
 				return err
 			}
@@ -136,23 +137,23 @@ BEGIN:
 	return nil
 }
 
-func (c *MessengerServiceClient) signUp(ctx context.Context, scanner *bufio.Scanner) error {
+func (c *Service) signUp(ctx context.Context, scanner *bufio.Scanner) error {
 BEGIN:
 	var authData model.AuthData
-	fmt.Print("Login: ")
+	fmt.Print(logInLabel)
 	if scanner.Scan() {
 		authData.Login = scanner.Text()
 	}
-	fmt.Print("Name: ")
+	fmt.Print(nameLabel)
 	if scanner.Scan() {
 		authData.Name = scanner.Text()
 	}
 	for {
-		fmt.Print("Password: ")
+		fmt.Print(passwordLabel)
 		if scanner.Scan() {
 			authData.Password = scanner.Text()
 		}
-		fmt.Print("Password: ")
+		fmt.Print(passwordLabel)
 		if scanner.Scan() {
 			if authData.Password == scanner.Text() {
 				break
@@ -182,14 +183,14 @@ BEGIN:
 	return nil
 }
 
-func (c *MessengerServiceClient) logIn(ctx context.Context, scanner *bufio.Scanner) error {
+func (c *Service) logIn(ctx context.Context, scanner *bufio.Scanner) error {
 BEGIN:
 	var authData model.AuthData
-	fmt.Print("Login: ")
+	fmt.Print(logInLabel)
 	if scanner.Scan() {
 		authData.Login = scanner.Text()
 	}
-	fmt.Print("Password: ")
+	fmt.Print(passwordLabel)
 	if scanner.Scan() {
 		authData.Password = scanner.Text()
 	}

@@ -10,7 +10,8 @@ import (
 
 func main() {
 	config := config.Get()
-	server, err := server.NewServer(context.Background(), config)
+	ctx := context.Background()
+	server, err := server.New(ctx, config)
 	if err != nil {
 		log.Fatalln(err)
 	}
