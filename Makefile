@@ -9,3 +9,7 @@ test:
 .PHONY: generate-mocks
 generate-mocks:
 	go generate internal/server/service/interface.go
+
+.PHONY: deploy
+deploy:
+	@cd deployments && docker-compose up --build
