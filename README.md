@@ -1,10 +1,8 @@
 # Messenger Service
 
-GRPC messaging service.
+Console GRPC messaging service.
 
 ## Run
-
-Install protobuf: `brew install protobuf`
 
 Generate protobuf: `make generate-proto`
 
