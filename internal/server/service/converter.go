@@ -20,7 +20,7 @@ type grpcError struct {
 }
 
 func convert(err error) GRPCError {
-	if v, ok := err.(GRPCError); ok {
+	if v, ok := err.(GRPCError); ok { //nolint:errorlint
 		return v
 	}
 	switch {
