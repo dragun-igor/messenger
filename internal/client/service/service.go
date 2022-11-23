@@ -11,6 +11,7 @@ import (
 
 	"github.com/dragun-igor/messenger/internal/pkg/model"
 	"github.com/dragun-igor/messenger/proto/messenger"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
@@ -174,7 +175,7 @@ BEGIN:
 		Password: authData.Password,
 	})
 	if err != nil {
-		fmt.Println(prefixServiceMessage + status.Convert(err).Proto().Message)
+		fmt.Println(stringGRPCError(err))
 		goto BEGIN
 	}
 	return nil
@@ -195,10 +196,19 @@ BEGIN:
 		Login:    authData.Login,
 		Password: authData.Password,
 	})
+
 	if err != nil {
-		fmt.Println(prefixServiceMessage + status.Convert(err).Proto().Message)
+		fmt.Println(stringGRPCError(err))
 		goto BEGIN
 	}
 	c.name = user.Name
 	return nil
+}
+
+func stringGRPCError(err error) string {
+	grpcErr := status.Convert(err)
+	if grpcErr.Code() != codes.Internal {
+		return prefixServiceMessage + grpcErr.Proto().Message
+	}
+	return prefixServiceMessage + grpcErr.Code().String()
 }
