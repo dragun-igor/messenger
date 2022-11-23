@@ -9,11 +9,13 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/dragun-igor/messenger/internal/pkg/model"
 	"github.com/dragun-igor/messenger/proto/messenger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 const prefixServiceMessage string = "[SERVICE] "
@@ -91,6 +93,22 @@ func (c *Service) sendMessage(ctx context.Context, message string) error {
 	return nil
 }
 
+func (c *Service) reconnect(ctx context.Context) {
+	func() {
+		ticker := time.NewTicker(time.Second * 10)
+		for range ticker.C {
+			_, err := c.client.Ping(ctx, &emptypb.Empty{})
+			if err != nil {
+				fmt.Println(prefixServiceMessage + "Trying to reconnect")
+			} else {
+				fmt.Println(prefixServiceMessage + "Reconnected")
+				go c.listenMessage(ctx)
+				break
+			}
+		}
+	}()
+}
+
 func (c *Service) listenMessage(ctx context.Context) {
 	stream, err := c.client.ReceiveMessage(ctx)
 	if err != nil {
@@ -100,6 +118,7 @@ func (c *Service) listenMessage(ctx context.Context) {
 	go func() {
 		<-stream.Context().Done()
 		fmt.Println(prefixServiceMessage + "Connection to server has lost")
+		go c.reconnect(ctx)
 	}()
 	for {
 		msg, err := stream.Recv()

@@ -22,10 +22,10 @@ const gracefulTimeout = 2 * time.Second
 
 type Server struct {
 	grpc    *grpc.Server
-	service *service.Service
 	db      resources.PostgresDB
 	config  *config.Config
 	metrics *metrics.MetricsServerService
+	closeCh chan struct{}
 }
 
 func New(ctx context.Context, config *config.Config) (*Server, error) {
@@ -34,10 +34,9 @@ func New(ctx context.Context, config *config.Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := service.New(ctx, server.db)
+	server.closeCh = make(chan struct{})
 	server.config = config
 	server.db = db
-	server.service = s
 	server.metrics = metrics.NewMetricsServerService(config.PrometheusHost + ":" + config.PrometheusPort)
 	server.grpc = grpc.NewServer(
 		grpc.StreamInterceptor(server.metrics.GRPCServerStreamMetricsInterceptor()),
@@ -46,7 +45,7 @@ func New(ctx context.Context, config *config.Config) (*Server, error) {
 			server.metrics.AppMetricsInterceptor(),
 		),
 	)
-	messenger.RegisterMessengerServiceServer(server.grpc, s)
+	messenger.RegisterMessengerServiceServer(server.grpc, service.New(server.db, server.closeCh))
 	err = server.metrics.Initialize(server.grpc)
 	if err != nil {
 		return nil, err
@@ -66,9 +65,20 @@ func (s *Server) Serve(ctx context.Context) error {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigCh
+		go func() {
+		CYCLE:
+			for {
+				select {
+				case s.closeCh <- struct{}{}:
+				case <-s.closeCh:
+					break CYCLE
+				}
+			}
+		}()
 		log.Println("termination signal received")
 		log.Println("stopping grpc server")
 		s.grpc.GracefulStop()
+		close(s.closeCh)
 		log.Println("grpc server is stopped")
 	}()
 
@@ -83,11 +93,8 @@ func (s *Server) Serve(ctx context.Context) error {
 func (s *Server) Stop(ctx context.Context) {
 	time.Sleep(gracefulTimeout)
 
-	log.Println("stopping grpc server")
-	s.grpc.Stop()
-
 	log.Println("disconnecting db")
-	s.db.Close(context.Background())
+	s.db.Close(ctx)
 
 	log.Println("stopping metrics server")
 	s.metrics.Close()

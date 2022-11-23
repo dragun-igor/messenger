@@ -44,7 +44,8 @@ func (s *MessengerSuiteServer) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
 	s.repo = mocks.NewMockRepository(s.ctrl)
 	grpc := grpc.NewServer([]grpc.ServerOption{}...)
-	serv := New(context.Background(), s.repo)
+	closeCh := make(chan struct{})
+	serv := New(s.repo, closeCh)
 	messenger.RegisterMessengerServiceServer(grpc, serv)
 	s.service = serv
 	s.service.clients["Receiver"] = make(chan *messenger.Message)

@@ -14,12 +14,14 @@ type Service struct {
 	messenger.UnimplementedMessengerServiceServer
 	clients map[string]chan *messenger.Message
 	db      Repository
+	closeCh <-chan struct{}
 }
 
-func New(ctx context.Context, db Repository) *Service {
+func New(db Repository, closeCh <-chan struct{}) *Service {
 	return &Service{
 		db:      db,
 		clients: make(map[string]chan *messenger.Message),
+		closeCh: closeCh,
 	}
 }
 
@@ -40,6 +42,10 @@ func (s *Service) SendMessage(ctx context.Context, message *messenger.Message) (
 	return &messenger.MessageResponse{Sent: true}, nil
 }
 
+func (s *Service) Ping(ctx context.Context, empty *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
+}
+
 func (s *Service) ReceiveMessage(stream messenger.MessengerService_ReceiveMessageServer) error {
 	user, err := stream.Recv()
 	if err != nil {
@@ -49,6 +55,9 @@ func (s *Service) ReceiveMessage(stream messenger.MessengerService_ReceiveMessag
 	log.Printf("user %s is online", user.Name)
 	for {
 		select {
+		case <-s.closeCh:
+			delete(s.clients, user.Name)
+			return nil
 		case <-stream.Context().Done():
 			log.Printf("user %s is offline", user.Name)
 			delete(s.clients, user.Name)

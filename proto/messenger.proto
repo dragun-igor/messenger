@@ -7,7 +7,7 @@ import "google/protobuf/empty.proto";
 service MessengerService {
     rpc SignUp(SignUpRequest) returns (google.protobuf.Empty) {}
     rpc LogIn(LogInRequest) returns (User) {}
-    // rpc Ping(stream User) returns (stream google.protobuf.Empty) {}
+    rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}
     rpc SendMessage(Message) returns (MessageResponse) {}
     rpc ReceiveMessage(stream User) returns (stream Message) {}
 }
