@@ -23,7 +23,11 @@ func NewMetricsClientService(addr string) *MetricsClientService {
 	reg.MustRegister(requestTimeHist)
 	reg.MustRegister(requestErrorsCounter)
 	return &MetricsClientService{
-		httpServer:        &http.Server{Handler: promhttp.HandlerFor(reg, promhttp.HandlerOpts{}), Addr: addr},
+		httpServer: &http.Server{
+			Handler:           promhttp.HandlerFor(reg, promhttp.HandlerOpts{}),
+			Addr:              addr,
+			ReadHeaderTimeout: 3 * time.Second,
+		},
 		grpcClientMetrics: grpcClientMetrics,
 	}
 }
