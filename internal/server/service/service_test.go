@@ -54,7 +54,7 @@ func (s *MessengerSuiteServer) TearDownTest() {
 	s.ctrl.Finish()
 }
 
-func TestMessengerServiceServer(t *testing.T) {
+func TestMessengerSuiteServer(t *testing.T) {
 	suite.Run(t, new(MessengerSuiteServer))
 }
 
