@@ -3,6 +3,7 @@ package service
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -64,7 +65,7 @@ func (c *MessengerServiceClient) receiveMessage(ctx context.Context) {
 	}()
 	for {
 		msg, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return
 		}
 		if err != nil {
@@ -196,7 +197,6 @@ BEGIN:
 		Login:    authData.Login,
 		Password: authData.Password,
 	})
-
 	if err != nil {
 		fmt.Println(stringGRPCError(err))
 		goto BEGIN

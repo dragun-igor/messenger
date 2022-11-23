@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type MetricsServerService struct {
+type MetricsServerService struct { //nolint:revive
 	httpServer        *http.Server
 	grpcServerMetrics *grpc_prometheus.ServerMetrics
 }

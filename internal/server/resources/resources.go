@@ -29,7 +29,13 @@ func InitPostgresDB(ctx context.Context, config *config.Config) (PostgresDB, err
 }
 
 func connectDB(ctx context.Context, config *config.Config) (*pgx.Conn, error) {
-	url := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", config.DBUser, config.DBPassword, config.DBHost, config.DBPort, config.DBName)
+	url := fmt.Sprintf("postgres://%s:%s@%s:%s/%s",
+		config.DBUser,
+		config.DBPassword,
+		config.DBHost,
+		config.DBPort,
+		config.DBName,
+	)
 	db, err := pgx.Connect(ctx, url)
 	if err != nil {
 		return nil, err

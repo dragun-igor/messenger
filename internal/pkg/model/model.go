@@ -51,7 +51,7 @@ func Validate(x interface{}) (ValidationErrors, error) {
 		}
 		tags := strings.Split(tag, "|")
 		var err error
-		switch value.Kind() {
+		switch value.Kind() { //nolint:exhaustive
 		case reflect.String:
 			ve, err = validateString(ve, structField.Name, tags, value.String())
 		default:
