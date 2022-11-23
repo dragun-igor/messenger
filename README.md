@@ -12,6 +12,4 @@ Generate protobuf: `make generate-proto`
 
 Generate mocks: `make generate-mocks`
 
-Run app with environment:<br/>
-`cd deployments`<br/>
-`sudo docker-compose up --build`
+Run app with environment: `make deploy`

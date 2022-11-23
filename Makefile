@@ -12,4 +12,4 @@ generate-mocks:
 
 .PHONY: deploy
 deploy:
-	@cd deployments && docker-compose up --build
+	@cd deployments && sudo docker-compose up --build
