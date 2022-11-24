@@ -73,7 +73,7 @@ func (c *ServiceClient) listenScanner(ctx context.Context, scanner *bufio.Scanne
 }
 
 func (c *ServiceClient) sendMessage(ctx context.Context, message string) error {
-	// preparaing and checking message
+	// preparing and checking message
 	message = strings.TrimSpace(message)
 	messageSplit := strings.SplitN(message, " ", 2)
 	if len(messageSplit) < 2 {
