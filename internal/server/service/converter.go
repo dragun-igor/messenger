@@ -3,7 +3,7 @@ package service
 import (
 	"errors"
 
-	pkgerrors "github.com/dragun-igor/messenger/pkg/errors"
+	pkg_errors "github.com/dragun-igor/messenger/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -24,9 +24,9 @@ func convert(err error) GRPCError {
 		return v
 	}
 	switch {
-	case errors.Is(err, pkgerrors.ErrUserNameIsBusy), errors.Is(err, pkgerrors.ErrLoginNameIsBusy):
+	case errors.Is(err, pkg_errors.ErrUserNameIsBusy), errors.Is(err, pkg_errors.ErrLoginNameIsBusy):
 		return newGRPCError(err, codes.AlreadyExists)
-	case errors.Is(err, pkgerrors.ErrIncorrectPassword):
+	case errors.Is(err, pkg_errors.ErrIncorrectPassword):
 		return newGRPCError(err, codes.PermissionDenied)
 	default:
 		return newGRPCError(err, codes.Internal)

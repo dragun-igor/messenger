@@ -21,7 +21,7 @@ type MessengerSuiteServer struct {
 
 	ctrl    *gomock.Controller
 	repo    *mocks.MockRepository
-	service *ClientService
+	service *ServiceServer
 }
 
 type authMatcher struct {
@@ -45,7 +45,7 @@ func (s *MessengerSuiteServer) SetupTest() {
 	s.repo = mocks.NewMockRepository(s.ctrl)
 	grpc := grpc.NewServer([]grpc.ServerOption{}...)
 	closeCh := make(chan struct{})
-	serv := NewClientService(s.repo, closeCh)
+	serv := NewServiceServer(s.repo, closeCh)
 	messenger.RegisterMessengerServiceServer(grpc, serv)
 	s.service = serv
 	s.service.clients["Receiver"] = make(chan *messenger.Message)

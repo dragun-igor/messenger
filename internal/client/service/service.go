@@ -3,10 +3,7 @@ package service
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
-	"io"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -39,18 +36,19 @@ const (
 	passwordLabel string = "Password: "
 )
 
+var minTickerValue time.Duration = 1
 var timeTickerReconnect time.Duration = time.Second * 10
 
-type Service struct {
+type ServiceClient struct {
 	client messenger.MessengerServiceClient
 	name   string
 }
 
-func New(client messenger.MessengerServiceClient) *Service {
-	return &Service{client: client}
+func NewServiceClient(client messenger.MessengerServiceClient) *ServiceClient {
+	return &ServiceClient{client: client}
 }
 
-func (c *Service) Serve(ctx context.Context) error {
+func (c *ServiceClient) Serve(ctx context.Context) error {
 	scanner := bufio.NewScanner(os.Stdin)
 	if err := c.auth(ctx, scanner); err != nil {
 		return err
@@ -59,7 +57,7 @@ func (c *Service) Serve(ctx context.Context) error {
 	return c.listenScanner(ctx, scanner)
 }
 
-func (c *Service) listenScanner(ctx context.Context, scanner *bufio.Scanner) error {
+func (c *ServiceClient) listenScanner(ctx context.Context, scanner *bufio.Scanner) error {
 	fmt.Printf(prefixServiceMessage+"Hello, %s!\n", c.name)
 	for scanner.Scan() {
 		message := scanner.Text()
@@ -75,13 +73,15 @@ func (c *Service) listenScanner(ctx context.Context, scanner *bufio.Scanner) err
 	return nil
 }
 
-func (c *Service) sendMessage(ctx context.Context, message string) error {
+func (c *ServiceClient) sendMessage(ctx context.Context, message string) error {
+	// preparaing and checking message
 	message = strings.TrimSpace(message)
 	messageSplit := strings.SplitN(message, " ", 2)
 	if len(messageSplit) < 2 {
 		fmt.Println(prefixServiceMessage + "Incorrect message. Message should look like \"{username} {message}\"")
 		return nil
 	}
+	// sending message
 	response, err := c.client.SendMessage(ctx, &messenger.Message{
 		Sender:   c.name,
 		Receiver: messageSplit[0],
@@ -96,55 +96,60 @@ func (c *Service) sendMessage(ctx context.Context, message string) error {
 	return nil
 }
 
-func (c *Service) listenMessage(ctx context.Context) {
+func (c *ServiceClient) listenMessage(ctx context.Context) {
+	// min ticker value to init connect
+	var timeTicker time.Duration = minTickerValue
+BEGIN:
+	// ping server
+	ticker := time.NewTicker(timeTicker)
+	for range ticker.C {
+		_, err := c.client.Ping(ctx, &emptypb.Empty{})
+		if err != nil {
+			fmt.Println(prefixServiceMessage + "Server doesn't response. Trying to reconnect...")
+			continue
+		}
+		fmt.Println(prefixServiceMessage + "Connected to server")
+		break
+	}
+
+	// ticker value to reconnect
+	timeTicker = timeTickerReconnect
+
+	// getting stream and sending username to server
 	stream, err := c.client.ReceiveMessage(ctx)
 	if err != nil {
-		log.Fatalln(err)
+		goto BEGIN
 	}
-	stream.Send(&messenger.User{Name: c.name})
-
-	// reconnecting
-	go func() {
-		<-stream.Context().Done()
-		fmt.Println(prefixServiceMessage + "Connection to server has lost")
-		ticker := time.NewTicker(timeTickerReconnect)
-		for range ticker.C {
-			_, err := c.client.Ping(ctx, &emptypb.Empty{})
-			if err != nil {
-				fmt.Println(prefixServiceMessage + "Trying to reconnect")
-			} else {
-				fmt.Println(prefixServiceMessage + "Reconnected")
-				go c.listenMessage(ctx)
-				break
-			}
-		}
-	}()
+	err = stream.Send(&messenger.User{Name: c.name})
+	if err != nil {
+		goto BEGIN
+	}
 
 	// receiving message from server
 	for {
 		msg, err := stream.Recv()
-		if errors.Is(err, io.EOF) {
-			return
-		}
 		if err != nil {
-			return
+			fmt.Println(prefixServiceMessage + "Connection to server has lost")
+			goto BEGIN
 		}
 		fmt.Printf("%v: %v\n", msg.Sender, msg.Message)
 	}
 }
 
-func (c *Service) auth(ctx context.Context, scanner *bufio.Scanner) error {
+func (c *ServiceClient) auth(ctx context.Context, scanner *bufio.Scanner) error {
 BEGIN:
 	fmt.Print("Are you already have a account? ")
 	if scanner.Scan() {
 		text := strings.ToLower(scanner.Text())
 		switch text {
+		// registration
 		case nLabel, noLabel, nRusLabel, noRusLabel:
 			fmt.Println(prefixServiceMessage + signUpLabel)
 			if err := c.signUp(ctx, scanner); err != nil {
 				return err
 			}
 			fallthrough
+		// authorization
 		case yLabel, yesLabel, yRusLabel, yesRusLabel:
 			fmt.Println(prefixServiceMessage + logInLabel)
 			if err := c.logIn(ctx, scanner); err != nil {
@@ -157,17 +162,20 @@ BEGIN:
 	return nil
 }
 
-func (c *Service) signUp(ctx context.Context, scanner *bufio.Scanner) error {
+func (c *ServiceClient) signUp(ctx context.Context, scanner *bufio.Scanner) error {
 BEGIN:
 	var authData model.AuthData
+	// login name entry
 	fmt.Print(loginLabel)
 	if scanner.Scan() {
 		authData.Login = scanner.Text()
 	}
+	// user name entry
 	fmt.Print(nameLabel)
 	if scanner.Scan() {
 		authData.Name = scanner.Text()
 	}
+	// password entry
 	for {
 		fmt.Print(passwordLabel)
 		if scanner.Scan() {
@@ -181,6 +189,7 @@ BEGIN:
 		}
 		fmt.Println(prefixServiceMessage + "Passwords are not matched")
 	}
+	// validating and sending data
 	ve, err := model.Validate(authData)
 	if err != nil {
 		return err
@@ -203,13 +212,15 @@ BEGIN:
 	return nil
 }
 
-func (c *Service) logIn(ctx context.Context, scanner *bufio.Scanner) error {
+func (c *ServiceClient) logIn(ctx context.Context, scanner *bufio.Scanner) error {
 BEGIN:
 	var authData model.AuthData
+	// login name entry
 	fmt.Print(loginLabel)
 	if scanner.Scan() {
 		authData.Login = scanner.Text()
 	}
+	// password entry
 	fmt.Print(passwordLabel)
 	if scanner.Scan() {
 		authData.Password = scanner.Text()
