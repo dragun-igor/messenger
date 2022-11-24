@@ -39,6 +39,8 @@ const (
 	passwordLabel string = "Password: "
 )
 
+var timeTickerReconnect time.Duration = time.Second * 10
+
 type Service struct {
 	client messenger.MessengerServiceClient
 	name   string
@@ -74,6 +76,7 @@ func (c *Service) listenScanner(ctx context.Context, scanner *bufio.Scanner) err
 }
 
 func (c *Service) sendMessage(ctx context.Context, message string) error {
+	message = strings.TrimSpace(message)
 	messageSplit := strings.SplitN(message, " ", 2)
 	if len(messageSplit) < 2 {
 		fmt.Println(prefixServiceMessage + "Incorrect message. Message should look like \"{username} {message}\"")
@@ -82,7 +85,7 @@ func (c *Service) sendMessage(ctx context.Context, message string) error {
 	response, err := c.client.SendMessage(ctx, &messenger.Message{
 		Sender:   c.name,
 		Receiver: messageSplit[0],
-		Message:  messageSplit[1],
+		Message:  strings.TrimSpace(messageSplit[1]),
 	})
 	if err != nil {
 		return err
@@ -93,9 +96,18 @@ func (c *Service) sendMessage(ctx context.Context, message string) error {
 	return nil
 }
 
-func (c *Service) reconnect(ctx context.Context) {
-	func() {
-		ticker := time.NewTicker(time.Second * 10)
+func (c *Service) listenMessage(ctx context.Context) {
+	stream, err := c.client.ReceiveMessage(ctx)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	stream.Send(&messenger.User{Name: c.name})
+
+	// reconnecting
+	go func() {
+		<-stream.Context().Done()
+		fmt.Println(prefixServiceMessage + "Connection to server has lost")
+		ticker := time.NewTicker(timeTickerReconnect)
 		for range ticker.C {
 			_, err := c.client.Ping(ctx, &emptypb.Empty{})
 			if err != nil {
@@ -107,22 +119,8 @@ func (c *Service) reconnect(ctx context.Context) {
 			}
 		}
 	}()
-}
 
-func (c *Service) listenMessage(ctx context.Context) {
-	defer func() {
-		fmt.Println("return from listenMessage")
-	}()
-	stream, err := c.client.ReceiveMessage(ctx)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	stream.Send(&messenger.User{Name: c.name})
-	go func() {
-		<-stream.Context().Done()
-		fmt.Println(prefixServiceMessage + "Connection to server has lost")
-		go c.reconnect(ctx)
-	}()
+	// receiving message from server
 	for {
 		msg, err := stream.Recv()
 		if errors.Is(err, io.EOF) {

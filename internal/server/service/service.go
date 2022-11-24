@@ -11,7 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-type Service struct {
+type ClientService struct {
 	mu sync.Mutex
 	messenger.UnimplementedMessengerServiceServer
 	clients map[string]chan *messenger.Message
@@ -19,8 +19,8 @@ type Service struct {
 	closeCh <-chan struct{}
 }
 
-func New(db Repository, closeCh <-chan struct{}) *Service {
-	return &Service{
+func NewClientService(db Repository, closeCh <-chan struct{}) *ClientService {
+	return &ClientService{
 		mu:      sync.Mutex{},
 		db:      db,
 		clients: make(map[string]chan *messenger.Message),
@@ -28,7 +28,7 @@ func New(db Repository, closeCh <-chan struct{}) *Service {
 	}
 }
 
-func (s *Service) SendMessage(ctx context.Context, message *messenger.Message) (*messenger.MessageResponse, error) {
+func (s *ClientService) SendMessage(ctx context.Context, message *messenger.Message) (*messenger.MessageResponse, error) {
 	if _, ok := s.clients[message.Receiver]; !ok {
 		return &messenger.MessageResponse{Sent: false}, nil
 	}
@@ -45,11 +45,11 @@ func (s *Service) SendMessage(ctx context.Context, message *messenger.Message) (
 	return &messenger.MessageResponse{Sent: true}, nil
 }
 
-func (s *Service) Ping(ctx context.Context, empty *emptypb.Empty) (*emptypb.Empty, error) {
+func (s *ClientService) Ping(ctx context.Context, empty *emptypb.Empty) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
 }
 
-func (s *Service) ReceiveMessage(stream messenger.MessengerService_ReceiveMessageServer) error {
+func (s *ClientService) ReceiveMessage(stream messenger.MessengerService_ReceiveMessageServer) error {
 	user, err := stream.Recv()
 	if err != nil {
 		return convert(err)
@@ -75,7 +75,7 @@ func (s *Service) ReceiveMessage(stream messenger.MessengerService_ReceiveMessag
 	}
 }
 
-func (s *Service) SignUp(ctx context.Context, signUpRequest *messenger.SignUpRequest) (*emptypb.Empty, error) {
+func (s *ClientService) SignUp(ctx context.Context, signUpRequest *messenger.SignUpRequest) (*emptypb.Empty, error) {
 	user := model.AuthData{
 		Login: signUpRequest.Login,
 		Name:  signUpRequest.Name,
@@ -104,7 +104,7 @@ func (s *Service) SignUp(ctx context.Context, signUpRequest *messenger.SignUpReq
 	return &emptypb.Empty{}, nil
 }
 
-func (s *Service) LogIn(ctx context.Context, logInRequest *messenger.LogInRequest) (*messenger.User, error) {
+func (s *ClientService) LogIn(ctx context.Context, logInRequest *messenger.LogInRequest) (*messenger.User, error) {
 	user := model.AuthData{
 		Login: logInRequest.Login,
 	}

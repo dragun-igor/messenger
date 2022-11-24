@@ -45,7 +45,7 @@ func New(ctx context.Context, config *config.Config) (*Server, error) {
 			server.metrics.AppMetricsInterceptor(),
 		),
 	)
-	messenger.RegisterMessengerServiceServer(server.grpc, service.New(server.db, server.closeCh))
+	messenger.RegisterMessengerServiceServer(server.grpc, service.NewClientService(server.db, server.closeCh))
 	err = server.metrics.Initialize(server.grpc)
 	if err != nil {
 		return nil, err
