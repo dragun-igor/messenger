@@ -36,7 +36,6 @@ const (
 	passwordLabel string = "Password: "
 )
 
-var minTickerValue time.Duration = 1
 var timeTickerReconnect time.Duration = time.Second * 10
 
 type ServiceClient struct {
@@ -97,12 +96,22 @@ func (c *ServiceClient) sendMessage(ctx context.Context, message string) error {
 }
 
 func (c *ServiceClient) listenMessage(ctx context.Context) {
-	// min ticker value to init connect
-	var timeTicker time.Duration = minTickerValue
-BEGIN:
+	// init connect channel
+	initCh := make(chan struct{})
+	go func() {
+		initCh <- struct{}{}
+	}()
+
+	// reconnect channel
+	ticker := time.NewTicker(timeTickerReconnect)
+
 	// ping server
-	ticker := time.NewTicker(timeTicker)
-	for range ticker.C {
+BEGIN:
+	for {
+		select {
+		case <-initCh:
+		case <-ticker.C:
+		}
 		_, err := c.client.Ping(ctx, &emptypb.Empty{})
 		if err != nil {
 			fmt.Println(prefixServiceMessage + "Server doesn't response. Trying to reconnect...")
@@ -111,9 +120,6 @@ BEGIN:
 		fmt.Println(prefixServiceMessage + "Connected to server")
 		break
 	}
-
-	// ticker value to reconnect
-	timeTicker = timeTickerReconnect
 
 	// getting stream and sending username to server
 	stream, err := c.client.ReceiveMessage(ctx)

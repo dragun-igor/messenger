@@ -46,7 +46,7 @@ func (s *ServiceServer) SendMessage(ctx context.Context, message *messenger.Mess
 }
 
 func (s *ServiceServer) Ping(ctx context.Context, empty *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (s *ServiceServer) ReceiveMessage(stream messenger.MessengerService_ReceiveMessageServer) error {
