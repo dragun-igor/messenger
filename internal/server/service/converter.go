@@ -26,7 +26,7 @@ func convert(err error) GRPCError {
 	switch {
 	case errors.Is(err, pkg_errors.ErrUserNameIsBusy), errors.Is(err, pkg_errors.ErrLoginNameIsBusy):
 		return newGRPCError(err, codes.AlreadyExists)
-	case errors.Is(err, pkg_errors.ErrIncorrectPassword):
+	case errors.Is(err, pkg_errors.ErrIncorrectPassword), errors.Is(err, pkg_errors.ErrUserIsAlreadyOnline):
 		return newGRPCError(err, codes.PermissionDenied)
 	default:
 		return newGRPCError(err, codes.Internal)

@@ -117,5 +117,8 @@ func (s *ServiceServer) LogIn(ctx context.Context, logInRequest *messenger.LogIn
 	if !dbUser.IsPasswordCorrect(logInRequest.Password) {
 		return nil, convert(errors.ErrIncorrectPassword)
 	}
+	if _, ok := s.clients[dbUser.Name]; ok {
+		return nil, convert(errors.ErrUserIsAlreadyOnline)
+	}
 	return &messenger.User{Name: dbUser.Name}, nil
 }
