@@ -144,7 +144,7 @@ BEGIN:
 
 func (c *ServiceClient) auth(ctx context.Context, scanner *bufio.Scanner) error {
 BEGIN:
-	fmt.Print("Are you already have a account? ")
+	fmt.Print(prefixServiceMessage + "Are you already have a account? ")
 	if scanner.Scan() {
 		text := strings.ToLower(scanner.Text())
 		switch text {
@@ -172,22 +172,22 @@ func (c *ServiceClient) signUp(ctx context.Context, scanner *bufio.Scanner) erro
 BEGIN:
 	var authData model.AuthData
 	// login name entry
-	fmt.Print(loginLabel)
+	fmt.Print(prefixServiceMessage + loginLabel)
 	if scanner.Scan() {
 		authData.Login = scanner.Text()
 	}
 	// user name entry
-	fmt.Print(nameLabel)
+	fmt.Print(prefixServiceMessage + nameLabel)
 	if scanner.Scan() {
 		authData.Name = scanner.Text()
 	}
 	// password entry
 	for {
-		fmt.Print(passwordLabel)
+		fmt.Print(prefixServiceMessage + passwordLabel)
 		if scanner.Scan() {
 			authData.Password = scanner.Text()
 		}
-		fmt.Print(passwordLabel)
+		fmt.Print(prefixServiceMessage + passwordLabel)
 		if scanner.Scan() {
 			if authData.Password == scanner.Text() {
 				break
@@ -222,12 +222,12 @@ func (c *ServiceClient) logIn(ctx context.Context, scanner *bufio.Scanner) error
 BEGIN:
 	var authData model.AuthData
 	// login name entry
-	fmt.Print(loginLabel)
+	fmt.Print(prefixServiceMessage + loginLabel)
 	if scanner.Scan() {
 		authData.Login = scanner.Text()
 	}
 	// password entry
-	fmt.Print(passwordLabel)
+	fmt.Print(prefixServiceMessage + passwordLabel)
 	if scanner.Scan() {
 		authData.Password = scanner.Text()
 	}
