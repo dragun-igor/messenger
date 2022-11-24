@@ -64,7 +64,9 @@ func (s *ServiceServer) ReceiveMessage(stream messenger.MessengerService_Receive
 			return nil
 		case <-stream.Context().Done():
 			log.Printf("user %s is offline", user.Name)
+			s.mu.Lock()
 			delete(s.clients, user.Name)
+			s.mu.Unlock()
 			return nil
 		case msg := <-s.clients[user.Name]:
 			err := stream.Send(msg)
