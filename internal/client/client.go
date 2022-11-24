@@ -13,13 +13,13 @@ import (
 
 type Client struct {
 	service *service.ServiceClient
-	metrics *metrics.MetricsClientService
+	metrics *metrics.ClientMetrics
 	conn    *grpc.ClientConn
 }
 
 func New(grpcAddr, promAddr string) (*Client, error) {
 	client := &Client{}
-	metric := metrics.NewMetricsClientService(promAddr)
+	metric := metrics.NewClientMetrics(promAddr)
 	conn, err := grpc.Dial(grpcAddr,
 		grpc.WithChainUnaryInterceptor(
 			metric.GRPCClientUnaryMetricsInterceptor(),

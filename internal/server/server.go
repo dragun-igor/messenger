@@ -24,7 +24,7 @@ type Server struct {
 	grpc    *grpc.Server
 	db      resources.PostgresDB
 	config  *config.Config
-	metrics *metrics.MetricsServerService
+	metrics *metrics.ServerMetrics
 	closeCh chan struct{}
 }
 
@@ -37,7 +37,7 @@ func New(ctx context.Context, config *config.Config) (*Server, error) {
 	server.closeCh = make(chan struct{})
 	server.config = config
 	server.db = db
-	server.metrics = metrics.NewMetricsServerService(config.PrometheusHost + ":" + config.PrometheusPort)
+	server.metrics = metrics.NewServerMetrics(config.PrometheusHost + ":" + config.PrometheusPort)
 	server.grpc = grpc.NewServer(
 		grpc.StreamInterceptor(server.metrics.GRPCServerStreamMetricsInterceptor()),
 		grpc.ChainUnaryInterceptor(

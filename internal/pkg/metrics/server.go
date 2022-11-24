@@ -11,18 +11,18 @@ import (
 	"google.golang.org/grpc"
 )
 
-type MetricsServerService struct { //nolint:revive
+type ServerMetrics struct { //nolint:revive
 	httpServer        *http.Server
 	grpcServerMetrics *grpc_prometheus.ServerMetrics
 }
 
-func NewMetricsServerService(addr string) *MetricsServerService {
+func NewServerMetrics(addr string) *ServerMetrics {
 	reg := prometheus.NewRegistry()
 	grpcServerMetrics := grpc_prometheus.NewServerMetrics()
 	reg.MustRegister(grpcServerMetrics)
 	reg.MustRegister(requestTimeHist)
 	reg.MustRegister(requestErrorsCounter)
-	return &MetricsServerService{
+	return &ServerMetrics{
 		httpServer: &http.Server{
 			Handler:           promhttp.HandlerFor(reg, promhttp.HandlerOpts{}),
 			Addr:              addr,
@@ -32,7 +32,7 @@ func NewMetricsServerService(addr string) *MetricsServerService {
 	}
 }
 
-func (s *MetricsServerService) Initialize(server *grpc.Server) error {
+func (s *ServerMetrics) Initialize(server *grpc.Server) error {
 	s.grpcServerMetrics.InitializeMetrics(server)
 	_, err := requestTimeHist.GetMetricWithLabelValues(fieldMethodName)
 	if err != nil {
@@ -42,15 +42,15 @@ func (s *MetricsServerService) Initialize(server *grpc.Server) error {
 	return err
 }
 
-func (s *MetricsServerService) GRPCServerUnaryMetricsInterceptor() grpc.UnaryServerInterceptor {
+func (s *ServerMetrics) GRPCServerUnaryMetricsInterceptor() grpc.UnaryServerInterceptor {
 	return s.grpcServerMetrics.UnaryServerInterceptor()
 }
 
-func (s *MetricsServerService) GRPCServerStreamMetricsInterceptor() grpc.StreamServerInterceptor {
+func (s *ServerMetrics) GRPCServerStreamMetricsInterceptor() grpc.StreamServerInterceptor {
 	return s.grpcServerMetrics.StreamServerInterceptor()
 }
 
-func (s *MetricsServerService) AppMetricsInterceptor() grpc.UnaryServerInterceptor {
+func (s *ServerMetrics) AppMetricsInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		start := time.Now()
 		resp, err := handler(ctx, req)
@@ -62,10 +62,10 @@ func (s *MetricsServerService) AppMetricsInterceptor() grpc.UnaryServerIntercept
 	}
 }
 
-func (s *MetricsServerService) Listen() error {
+func (s *ServerMetrics) Listen() error {
 	return s.httpServer.ListenAndServe()
 }
 
-func (s *MetricsServerService) Close() error {
+func (s *ServerMetrics) Close() error {
 	return s.httpServer.Close()
 }

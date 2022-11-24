@@ -11,18 +11,18 @@ import (
 	"google.golang.org/grpc"
 )
 
-type MetricsClientService struct { //nolint:revive
+type ClientMetrics struct { //nolint:revive
 	httpServer        *http.Server
 	grpcClientMetrics *grpc_prometheus.ClientMetrics
 }
 
-func NewMetricsClientService(addr string) *MetricsClientService {
+func NewClientMetrics(addr string) *ClientMetrics {
 	reg := prometheus.NewRegistry()
 	grpcClientMetrics := grpc_prometheus.NewClientMetrics()
 	reg.MustRegister(grpcClientMetrics)
 	reg.MustRegister(requestTimeHist)
 	reg.MustRegister(requestErrorsCounter)
-	return &MetricsClientService{
+	return &ClientMetrics{
 		httpServer: &http.Server{
 			Handler:           promhttp.HandlerFor(reg, promhttp.HandlerOpts{}),
 			Addr:              addr,
@@ -32,15 +32,15 @@ func NewMetricsClientService(addr string) *MetricsClientService {
 	}
 }
 
-func (c *MetricsClientService) GRPCClientUnaryMetricsInterceptor() grpc.UnaryClientInterceptor {
+func (c *ClientMetrics) GRPCClientUnaryMetricsInterceptor() grpc.UnaryClientInterceptor {
 	return c.grpcClientMetrics.UnaryClientInterceptor()
 }
 
-func (c *MetricsClientService) GRPCClientStreamMetricsInterceptor() grpc.StreamClientInterceptor {
+func (c *ClientMetrics) GRPCClientStreamMetricsInterceptor() grpc.StreamClientInterceptor {
 	return c.grpcClientMetrics.StreamClientInterceptor()
 }
 
-func (c *MetricsClientService) AppMetricsInterceptor() grpc.UnaryClientInterceptor {
+func (c *ClientMetrics) AppMetricsInterceptor() grpc.UnaryClientInterceptor {
 	return func(ctx context.Context, method string, req interface{}, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		start := time.Now()
 		err := invoker(ctx, method, req, reply, cc, opts...)
@@ -52,10 +52,10 @@ func (c *MetricsClientService) AppMetricsInterceptor() grpc.UnaryClientIntercept
 	}
 }
 
-func (c *MetricsClientService) Listen() error {
+func (c *ClientMetrics) Listen() error {
 	return c.httpServer.ListenAndServe()
 }
 
-func (c *MetricsClientService) Close() error {
+func (c *ClientMetrics) Close() error {
 	return c.httpServer.Close()
 }
