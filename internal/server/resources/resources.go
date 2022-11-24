@@ -83,7 +83,6 @@ func getMigrationsQuery(migrationsPath string) ([]string, error) {
 		}
 		migrationsQuery = append(migrationsQuery, string(b))
 	}
-
 	return migrationsQuery, nil
 }
 
