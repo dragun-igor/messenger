@@ -3,10 +3,8 @@ package config
 import "os"
 
 const (
-	defaultGRPCHost       string = "localhost"
-	defaultGRPCPort       string = "50051"
-	defaultPrometheusHost string = "localhost"
-	defaultPrometheusPort string = "9092"
+	defaultGRPCAddr       string = "localhost:50051"
+	defaultPrometheusAddr string = "localhost:9092"
 	defaultDBHost         string = "localhost"
 	defaultDBPort         string = "5432"
 	defaultDBName         string = "postgres"
@@ -15,10 +13,8 @@ const (
 )
 
 type Config struct {
-	GRPCHost       string
-	GRPCPort       string
-	PrometheusHost string
-	PrometheusPort string
+	GRPCAddr       string
+	PrometheusAddr string
 	DBHost         string
 	DBPort         string
 	DBName         string
@@ -37,10 +33,8 @@ func getEnv(key, defaultValue string) string {
 
 func Get() *Config {
 	return &Config{
-		GRPCHost:       getEnv("GRPC_HOST", defaultGRPCHost),
-		GRPCPort:       getEnv("GRPC_PORT", defaultGRPCPort),
-		PrometheusHost: getEnv("PROMETHEUS_HOST", defaultPrometheusHost),
-		PrometheusPort: getEnv("PROMETHEUS_PORT", defaultPrometheusPort),
+		GRPCAddr:       getEnv("GRPC_ADDR", defaultGRPCAddr),
+		PrometheusAddr: getEnv("PROMETHEUS_ADDR", defaultPrometheusAddr),
 		DBHost:         getEnv("DB_HOST", defaultDBHost),
 		DBPort:         getEnv("DB_PORT", defaultDBPort),
 		DBName:         getEnv("DB_NAME", defaultDBName),

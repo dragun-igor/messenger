@@ -19,10 +19,8 @@ services:
     links:
       - db:db
     environment:
-      PROMETHEUS_HOST: 0.0.0.0
-      PROMETHEUS_PORT: 9092
-      GRPC_HOST: 0.0.0.0
-      GRPC_PORT: 50051
+      PROMETHEUS_ADDR: 0.0.0.0:9092
+      GRPC_ADDR: 0.0.0.0:50051
       DB_HOST: db
       DB_PORT: 5432
       DB_USER: user

@@ -39,7 +39,7 @@ func New(config *config.Config) (*Server, error) {
 	server.closeCh = make(chan struct{})
 	server.config = config
 	server.db = db
-	server.metrics = metrics.NewServerMetrics(config.PrometheusHost + ":" + config.PrometheusPort)
+	server.metrics = metrics.NewServerMetrics(config.PrometheusAddr)
 	server.grpc = grpc.NewServer(
 		grpc.StreamInterceptor(server.metrics.GRPCServerStreamMetricsInterceptor()),
 		grpc.ChainUnaryInterceptor(
@@ -58,7 +58,7 @@ func New(config *config.Config) (*Server, error) {
 
 func (s *Server) Serve(ctx context.Context) error {
 	defer s.Stop(ctx)
-	lis, err := net.Listen("tcp", s.config.GRPCHost+":"+s.config.GRPCPort)
+	lis, err := net.Listen("tcp", s.config.GRPCAddr)
 	if err != nil {
 		return err
 	}
