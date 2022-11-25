@@ -11,11 +11,11 @@ import (
 func main() {
 	config := config.Get()
 	ctx := context.Background()
-	server, err := server.New(config)
+	s, err := server.New(config)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	if err := server.Serve(ctx); err != nil {
+	if err := s.Serve(ctx); err != nil {
 		log.Fatalln(err)
 	}
 }

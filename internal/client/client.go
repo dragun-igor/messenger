@@ -32,7 +32,7 @@ func New(grpcAddr, promAddr string) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	client.service = service.NewServiceClient(messenger.NewMessengerClient(conn))
 	client.metrics = metric
 	client.conn = conn
 	return client, nil
@@ -40,7 +40,6 @@ func New(grpcAddr, promAddr string) (*Client, error) {
 
 func (c *Client) Serve(ctx context.Context) error {
 	defer c.Stop()
-	c.service = service.NewServiceClient(messenger.NewMessengerClient(c.conn))
 	go func() {
 		if err := c.metrics.Listen(); err != nil {
 			log.Println(err)
