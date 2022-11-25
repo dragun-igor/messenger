@@ -12,8 +12,8 @@ import (
 )
 
 type ServiceServer struct {
-	mu sync.Mutex
-	messenger.UnimplementedMessengerServer
+	messenger.MessengerServer
+	mu      sync.Mutex
 	clients map[string]chan *messenger.Message
 	db      Repository
 	closeCh <-chan struct{}
