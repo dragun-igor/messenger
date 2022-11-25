@@ -40,7 +40,7 @@ func New(grpcAddr, promAddr string) (*Client, error) {
 
 func (c *Client) Serve(ctx context.Context) error {
 	defer c.Stop()
-	c.service = service.NewServiceClient(messenger.NewMessengerServiceClient(c.conn))
+	c.service = service.NewServiceClient(messenger.NewMessengerClient(c.conn))
 	go func() {
 		if err := c.metrics.Listen(); err != nil {
 			log.Println(err)

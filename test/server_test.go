@@ -14,7 +14,7 @@ func TestClientFlow(t *testing.T) {
 	conn, err := grpc.Dial("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err)
 	ctx := context.Background()
-	messengerService := messenger.NewMessengerServiceClient(conn)
+	messengerService := messenger.NewMessengerClient(conn)
 
 	// sign up
 	signUpRequest := &messenger.SignUpRequest{

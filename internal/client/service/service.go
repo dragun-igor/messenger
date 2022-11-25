@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dragun-igor/messenger/internal/pkg/model"
+	"github.com/dragun-igor/messenger/pkg/validate"
 	"github.com/dragun-igor/messenger/proto/messenger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -39,11 +40,11 @@ const (
 var timeTickerReconnect time.Duration = time.Second * 10
 
 type ServiceClient struct {
-	client messenger.MessengerServiceClient
+	client messenger.MessengerClient
 	name   string
 }
 
-func NewServiceClient(client messenger.MessengerServiceClient) *ServiceClient {
+func NewServiceClient(client messenger.MessengerClient) *ServiceClient {
 	return &ServiceClient{client: client}
 }
 
@@ -196,7 +197,7 @@ BEGIN:
 		fmt.Println(prefixServiceMessage + "Passwords are not matched")
 	}
 	// validating and sending data
-	ve, err := model.Validate(authData)
+	ve, err := validate.Validate(authData)
 	if err != nil {
 		return err
 	}

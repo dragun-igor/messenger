@@ -11,7 +11,7 @@ import (
 func main() {
 	config := config.Get()
 	ctx := context.Background()
-	server, err := server.New(ctx, config)
+	server, err := server.New(config)
 	if err != nil {
 		log.Fatalln(err)
 	}

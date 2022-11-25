@@ -13,7 +13,7 @@ import (
 
 type ServiceServer struct {
 	mu sync.Mutex
-	messenger.UnimplementedMessengerServiceServer
+	messenger.UnimplementedMessengerServer
 	clients map[string]chan *messenger.Message
 	db      Repository
 	closeCh <-chan struct{}
@@ -49,7 +49,7 @@ func (s *ServiceServer) Ping(ctx context.Context, empty *emptypb.Empty) (*emptyp
 	return &emptypb.Empty{}, nil
 }
 
-func (s *ServiceServer) ReceiveMessage(stream messenger.MessengerService_ReceiveMessageServer) error {
+func (s *ServiceServer) ReceiveMessage(stream messenger.Messenger_ReceiveMessageServer) error {
 	user, err := stream.Recv()
 	if err != nil {
 		return convert(err)

@@ -11,6 +11,7 @@ import (
 
 	"github.com/dragun-igor/messenger/config"
 	"github.com/dragun-igor/messenger/internal/pkg/metrics"
+	"github.com/dragun-igor/messenger/internal/pkg/repository"
 	"github.com/dragun-igor/messenger/internal/server/resources"
 	"github.com/dragun-igor/messenger/internal/server/service"
 	"github.com/dragun-igor/messenger/proto/messenger"
@@ -22,15 +23,16 @@ const gracefulTimeout = 2 * time.Second
 
 type Server struct {
 	grpc    *grpc.Server
-	db      resources.PostgresDB
+	db      resources.Connection
 	config  *config.Config
 	metrics *metrics.ServerMetrics
 	closeCh chan struct{}
 }
 
-func New(ctx context.Context, config *config.Config) (*Server, error) {
+func New(config *config.Config) (*Server, error) {
+	ctx := context.TODO()
 	server := &Server{}
-	db, err := resources.InitPostgresDB(ctx, config)
+	db, err := resources.NewConnection(ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +47,7 @@ func New(ctx context.Context, config *config.Config) (*Server, error) {
 			server.metrics.AppMetricsInterceptor(),
 		),
 	)
-	messenger.RegisterMessengerServiceServer(server.grpc, service.NewServiceServer(server.db, server.closeCh))
+	messenger.RegisterMessengerServer(server.grpc, service.NewServiceServer(repository.New(db), server.closeCh))
 	err = server.metrics.Initialize(server.grpc)
 	if err != nil {
 		return nil, err

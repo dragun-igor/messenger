@@ -4,7 +4,7 @@ option go_package = "./messenger";
 
 import "google/protobuf/empty.proto";
 
-service MessengerService {
+service Messenger {
     rpc SignUp(SignUpRequest) returns (google.protobuf.Empty) {}
     rpc LogIn(LogInRequest) returns (User) {}
     rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) {}

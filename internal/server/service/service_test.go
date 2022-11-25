@@ -24,29 +24,13 @@ type MessengerSuiteServer struct {
 	service *ServiceServer
 }
 
-type authMatcher struct {
-	model.AuthData
-}
-
-func (a authMatcher) Matches(x interface{}) bool {
-	a2, ok := x.(model.AuthData)
-	if !ok {
-		return false
-	}
-	return a2.Login == a.AuthData.Login && a2.Name == a.AuthData.Name && a2.IsPasswordCorrect(a.AuthData.Password)
-}
-
-func (a authMatcher) String() string {
-	return ""
-}
-
 func (s *MessengerSuiteServer) SetupTest() {
 	s.ctrl = gomock.NewController(s.T())
 	s.repo = mocks.NewMockRepository(s.ctrl)
 	grpc := grpc.NewServer([]grpc.ServerOption{}...)
 	closeCh := make(chan struct{})
 	serv := NewServiceServer(s.repo, closeCh)
-	messenger.RegisterMessengerServiceServer(grpc, serv)
+	messenger.RegisterMessengerServer(grpc, serv)
 	s.service = serv
 	s.service.clients["Receiver"] = make(chan *messenger.Message)
 }
@@ -126,7 +110,9 @@ func (s *MessengerSuiteServer) TestAuth() {
 	s.repo.EXPECT().CheckLoginExists(ctx, modelAuth).Return(true, nil)
 	s.repo.EXPECT().CheckNameExists(ctx, modelAuth).Return(true, nil)
 	modelAuth.Password = "Password"
-	s.repo.EXPECT().CreateUser(ctx, authMatcher{modelAuth}).Return(nil)
+
+	authMatcher := NewAuthMatcher(modelAuth)
+	s.repo.EXPECT().CreateUser(ctx, authMatcher).Return(nil)
 	_, err = s.service.SignUp(ctx, protoAuth)
 	require.NoError(t, err)
 }

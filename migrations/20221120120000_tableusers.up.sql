@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS users (
-    login text NOT NULL UNIQUE,
-    name text NOT NULL UNIQUE,
-    password text NOT NULL
+    login varchar(32) NOT NULL UNIQUE,
+    name varchar(32) NOT NULL UNIQUE,
+    password varchar(32) NOT NULL
 );

@@ -10,22 +10,16 @@ import (
 	"strings"
 
 	"github.com/dragun-igor/messenger/config"
-	"github.com/dragun-igor/messenger/internal/pkg/model"
 	"github.com/jackc/pgx/v5"
 )
 
-const (
-	usersTable    string = "users"
-	messagesTable string = "messages"
-)
-
-type PostgresDB struct {
+type Connection struct {
 	*pgx.Conn
 }
 
-func InitPostgresDB(ctx context.Context, config *config.Config) (PostgresDB, error) {
+func NewConnection(ctx context.Context, config *config.Config) (Connection, error) {
 	db, err := connectDB(ctx, config)
-	return PostgresDB{db}, err
+	return Connection{db}, err
 }
 
 func connectDB(ctx context.Context, config *config.Config) (*pgx.Conn, error) {
@@ -84,42 +78,4 @@ func getMigrationsQuery(migrationsPath string) ([]string, error) {
 		migrationsQuery = append(migrationsQuery, string(b))
 	}
 	return migrationsQuery, nil
-}
-
-func (db PostgresDB) InsertMessage(ctx context.Context, message model.Message) error {
-	query := fmt.Sprintf("INSERT INTO %s VALUES ($1, $2, $3);", messagesTable)
-	_, err := db.Exec(ctx, query, message.Sender, message.Receiver, message.Message)
-	return err
-}
-
-func (db PostgresDB) CreateUser(ctx context.Context, user model.AuthData) error {
-	query := fmt.Sprintf("INSERT INTO %s VALUES ($1, $2, $3);", usersTable)
-	_, err := db.Exec(ctx, query, user.Login, user.Name, user.Password)
-	return err
-}
-
-func (db PostgresDB) CheckLoginExists(ctx context.Context, user model.AuthData) (bool, error) {
-	var ok bool
-	query := fmt.Sprintf("SELECT EXISTS(SELECT * FROM %s WHERE login = $1)", usersTable)
-	row := db.QueryRow(ctx, query, user.Login)
-	err := row.Scan(&ok)
-	return !ok, err
-}
-
-func (db PostgresDB) CheckNameExists(ctx context.Context, user model.AuthData) (bool, error) {
-	var ok bool
-	query := fmt.Sprintf("SELECT EXISTS(SELECT * FROM %s WHERE name = $1)", usersTable)
-	row := db.QueryRow(ctx, query, user.Name)
-	err := row.Scan(&ok)
-	return !ok, err
-}
-
-func (db PostgresDB) GetUser(ctx context.Context, user model.AuthData) (model.AuthData, error) {
-	var login string
-	var name string
-	var password string
-	query := fmt.Sprintf("SELECT * FROM %s WHERE login = $1", usersTable)
-	row := db.QueryRow(ctx, query, user.Login)
-	err := row.Scan(&login, &name, &password)
-	return model.AuthData{Login: login, Name: name, Password: password}, err
 }
