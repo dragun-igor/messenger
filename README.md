@@ -18,4 +18,4 @@ Run app with environment: `make deploy`
 
 Run client `go run cmd/client/main.go`
 
-After authorization user be able send message to other authorizated users. Message should look like `{username} {message_text}`.
+After authorization user can send message to other authorized users. Message should look like `{username} {message_text}`.
