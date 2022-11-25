@@ -50,9 +50,9 @@ func (c *Client) Serve(ctx context.Context) error {
 }
 
 func (c *Client) Stop() {
-	log.Println("closing connection")
-	c.conn.Close()
-
 	log.Println("stop metrics server")
 	c.metrics.Close()
+
+	log.Println("closing connection")
+	c.conn.Close()
 }

@@ -85,9 +85,9 @@ func (s *Server) Serve(ctx context.Context) error {
 func (s *Server) Stop(ctx context.Context) {
 	time.Sleep(gracefulTimeout)
 
-	log.Println("disconnecting db")
-	s.db.Close(ctx)
-
 	log.Println("stopping metrics server")
 	s.metrics.Close()
+
+	log.Println("disconnecting db")
+	s.db.Close(ctx)
 }
